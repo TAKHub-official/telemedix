@@ -11,7 +11,14 @@ function TestConnection() {
     try {
       // Use the environment variable for API URL
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-      const response = await axios.get(`${apiUrl}/health`);
+      console.log('Testing connection with API URL:', apiUrl);
+      
+      const healthUrl = `${apiUrl}/health`;
+      console.log('Full health check URL:', healthUrl);
+      
+      const response = await axios.get(healthUrl);
+      console.log('Response received:', response);
+      
       setMessage(JSON.stringify(response.data, null, 2));
       setStatus('success');
     } catch (error) {
@@ -22,9 +29,11 @@ function TestConnection() {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         errorMessage += `Server responded with status ${error.response.status}`;
+        console.error('Error response:', error.response);
       } else if (error.request) {
         // The request was made but no response was received
         errorMessage += 'No response received from server. Is the backend running?';
+        console.error('Error request:', error.request);
       } else {
         // Something happened in setting up the request that triggered an Error
         errorMessage += error.message;
