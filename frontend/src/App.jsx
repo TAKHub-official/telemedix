@@ -2,12 +2,16 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import AdminLayout from './components/layouts/AdminLayout';
+import DoctorLayout from './components/layouts/DoctorLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 
 // Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import DoctorDashboard from './pages/doctor/Dashboard';
+import Sessions from './pages/doctor/Sessions';
+import Archives from './pages/doctor/Archives';
 import TestPage from './pages/doctor/TestPage';
 
 // Simple test page directly included
@@ -37,7 +41,7 @@ function App() {
       case 'ADMIN':
         return '/admin/dashboard';
       case 'DOCTOR':
-        return '/doctor-test';
+        return '/doctor/dashboard';
       case 'MEDIC':
         return '/medic';
       default:
@@ -66,7 +70,19 @@ function App() {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
       
-      {/* Doctor route (simplified) */}
+      {/* Doctor routes */}
+      <Route path="/doctor" element={
+        <ProtectedRoute isAllowed={isAuthenticated && user?.role === 'DOCTOR'} redirectPath="/login">
+          <DoctorLayout />
+        </ProtectedRoute>
+      }>
+        <Route path="dashboard" element={<DoctorDashboard />} />
+        <Route path="sessions" element={<Sessions />} />
+        <Route path="archives" element={<Archives />} />
+        <Route index element={<Navigate to="/doctor/dashboard" replace />} />
+      </Route>
+      
+      {/* Doctor test route (for backward compatibility) */}
       <Route path="/doctor-test" element={
         <ProtectedRoute isAllowed={isAuthenticated && user?.role === 'DOCTOR'} redirectPath="/login">
           <TestPage />

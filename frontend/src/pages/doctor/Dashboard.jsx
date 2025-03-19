@@ -21,7 +21,9 @@ import {
   CircularProgress,
   IconButton,
   Tabs,
-  Tab
+  Tab,
+  Alert,
+  Skeleton
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -30,109 +32,69 @@ import {
   MedicalServices as MedicalServicesIcon,
   VisibilityOutlined as ViewIcon,
   CheckCircle as CheckCircleIcon,
-  HighlightOff as CancelIcon
+  HighlightOff as CancelIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { api as apiService } from '../../services/api';
-
-// Mock data for dashboard statistics
-const mockStats = {
-  activeSessions: 3,
-  pendingSessions: 2,
-  completedToday: 5,
-  notificationCount: 4
-};
-
-// Mock data for session cards
-const mockSessions = [
-  {
-    id: 'sess-001',
-    patientName: 'Max Mustermann',
-    age: 45,
-    priority: 'HIGH',
-    status: 'ACTIVE',
-    createdAt: '2025-03-19T10:30:00Z',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    },
-    symptoms: ['Brustschmerzen', 'Kurzatmigkeit'],
-    vitalSigns: {
-      heartRate: 95,
-      bloodPressure: '140/90',
-      oxygenSaturation: 94
-    }
-  },
-  {
-    id: 'sess-002',
-    patientName: 'Anna Schmidt',
-    age: 32,
-    priority: 'MEDIUM',
-    status: 'ACTIVE',
-    createdAt: '2025-03-19T11:15:00Z',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    },
-    symptoms: ['Kopfschmerzen', 'Schwindel'],
-    vitalSigns: {
-      heartRate: 78,
-      bloodPressure: '125/85',
-      oxygenSaturation: 97
-    }
-  },
-  {
-    id: 'sess-003',
-    patientName: 'Julia Weber',
-    age: 28,
-    priority: 'LOW',
-    status: 'PENDING',
-    createdAt: '2025-03-19T11:45:00Z',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    },
-    symptoms: ['Halsschmerzen', 'Fieber'],
-    vitalSigns: {
-      heartRate: 88,
-      bloodPressure: '120/80',
-      oxygenSaturation: 98
-    }
-  }
-];
+import { sessionsAPI } from '../../services/api';
 
 const DoctorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState(mockStats);
-  const [sessions, setSessions] = useState(mockSessions);
+  const [stats, setStats] = useState({
+    activeSessions: 0,
+    pendingSessions: 0,
+    completedToday: 0,
+    notificationCount: 0
+  });
+  const [sessions, setSessions] = useState([]);
   const [tabValue, setTabValue] = useState(0);
   const navigate = useNavigate();
 
   // Load dashboard data
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // In a real implementation, you would fetch data from the API
-        // For now, we'll simulate an API delay with mock data
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Set mock data
-        setStats(mockStats);
-        setSessions(mockSessions);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading dashboard data:', err);
-        setError('Fehler beim Laden der Dashboard-Daten');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch sessions from the API
+      const response = await sessionsAPI.getAll({
+        limit: 5, // Only get the most recent sessions for the dashboard
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      
+      const sessionData = response.data;
+      
+      // Set sessions
+      setSessions(sessionData);
+      
+      // Calculate stats from the response data
+      const activeSessions = sessionData.filter(session => session.status === 'ACTIVE').length;
+      const pendingSessions = sessionData.filter(session => session.status === 'PENDING').length;
+      const completedToday = sessionData.filter(session => {
+        const today = new Date().toISOString().split('T')[0];
+        const sessionDate = new Date(session.updatedAt).toISOString().split('T')[0];
+        return session.status === 'COMPLETED' && sessionDate === today;
+      }).length;
+      
+      setStats({
+        activeSessions,
+        pendingSessions,
+        completedToday,
+        notificationCount: pendingSessions // Use pending sessions as notification count for now
+      });
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Fehler beim Laden der Dashboard-Daten. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -145,18 +107,30 @@ const DoctorDashboard = () => {
   };
 
   // Handle session accept
-  const handleAcceptSession = (sessionId) => {
-    // In real implementation, this would update the session status in the backend
-    console.log('Accepting session:', sessionId);
-    
-    // Update local state to reflect the change
-    setSessions(
-      sessions.map(session => 
-        session.id === sessionId 
-          ? { ...session, status: 'ACTIVE' } 
-          : session
-      )
-    );
+  const handleAcceptSession = async (sessionId) => {
+    try {
+      setLoading(true);
+      
+      // Get the current user ID from the Redux store (could be implemented differently)
+      // For now, we'll assume the doctor ID is available
+      
+      // Update the session status in the backend
+      await sessionsAPI.assign(sessionId, 'current_doctor_id'); // In a real app, get the doctor ID dynamically
+      
+      // Refresh data
+      await loadDashboardData();
+      
+    } catch (err) {
+      console.error('Error accepting session:', err);
+      setError('Fehler beim Akzeptieren der Session. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    loadDashboardData();
   };
 
   // Get priority color
@@ -189,6 +163,8 @@ const DoctorDashboard = () => {
 
   // Format date
   const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
     const date = new Date(dateString);
     return date.toLocaleTimeString('de-DE', {
       hour: '2-digit',
@@ -208,9 +184,13 @@ const DoctorDashboard = () => {
                 <MedicalServicesIcon />
               </Avatar>
               <Box>
-                <Typography variant="h4" component="div" fontWeight="bold">
-                  {stats.activeSessions}
-                </Typography>
+                {loading ? (
+                  <Skeleton variant="text" width={40} height={40} />
+                ) : (
+                  <Typography variant="h4" component="div" fontWeight="bold">
+                    {stats.activeSessions}
+                  </Typography>
+                )}
                 <Typography variant="body2" color="text.secondary">
                   Aktive Sessions
                 </Typography>
@@ -228,9 +208,13 @@ const DoctorDashboard = () => {
                 <AccessTimeIcon />
               </Avatar>
               <Box>
-                <Typography variant="h4" component="div" fontWeight="bold">
-                  {stats.pendingSessions}
-                </Typography>
+                {loading ? (
+                  <Skeleton variant="text" width={40} height={40} />
+                ) : (
+                  <Typography variant="h4" component="div" fontWeight="bold">
+                    {stats.pendingSessions}
+                  </Typography>
+                )}
                 <Typography variant="body2" color="text.secondary">
                   Wartende Sessions
                 </Typography>
@@ -248,9 +232,13 @@ const DoctorDashboard = () => {
                 <CheckCircleIcon />
               </Avatar>
               <Box>
-                <Typography variant="h4" component="div" fontWeight="bold">
-                  {stats.completedToday}
-                </Typography>
+                {loading ? (
+                  <Skeleton variant="text" width={40} height={40} />
+                ) : (
+                  <Typography variant="h4" component="div" fontWeight="bold">
+                    {stats.completedToday}
+                  </Typography>
+                )}
                 <Typography variant="body2" color="text.secondary">
                   Abgeschlossen heute
                 </Typography>
@@ -264,17 +252,19 @@ const DoctorDashboard = () => {
         <Card sx={{ height: '100%' }}>
           <CardContent>
             <Box display="flex" alignItems="center">
-              <Badge badgeContent={stats.notificationCount} color="error">
-                <Avatar sx={{ bgcolor: 'info.light', mr: 2 }}>
-                  <NotificationsIcon />
-                </Avatar>
-              </Badge>
+              <Avatar sx={{ bgcolor: 'info.light', mr: 2 }}>
+                <NotificationsIcon />
+              </Avatar>
               <Box>
-                <Typography variant="h4" component="div" fontWeight="bold">
-                  {stats.notificationCount}
-                </Typography>
+                {loading ? (
+                  <Skeleton variant="text" width={40} height={40} />
+                ) : (
+                  <Typography variant="h4" component="div" fontWeight="bold">
+                    {stats.notificationCount}
+                  </Typography>
+                )}
                 <Typography variant="body2" color="text.secondary">
-                  Benachrichtigungen
+                  Neue Benachrichtigungen
                 </Typography>
               </Box>
             </Box>
@@ -284,159 +274,184 @@ const DoctorDashboard = () => {
     </Grid>
   );
 
-  // Render session cards
+  // Render session list
   const renderSessionList = () => {
-    // Filter sessions based on active tab
-    const filteredSessions = tabValue === 0 
-      ? sessions.filter(s => s.status === 'ACTIVE')
-      : tabValue === 1
-      ? sessions.filter(s => s.status === 'PENDING')
-      : sessions;
+    const filteredSessions = sessions.filter(session => {
+      // Filter based on tab value
+      if (tabValue === 0) return true; // All sessions
+      if (tabValue === 1) return session.status === 'ACTIVE'; // Active
+      if (tabValue === 2) return session.status === 'PENDING'; // Pending
+      return false;
+    });
+
+    if (filteredSessions.length === 0 && !loading) {
+      return (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Keine Sessions gefunden.
+        </Alert>
+      );
+    }
 
     return (
-      <List>
-        {filteredSessions.length === 0 ? (
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              Keine Sessions gefunden
-            </Typography>
-          </Paper>
-        ) : (
-          filteredSessions.map(session => (
-            <Paper key={session.id} sx={{ mb: 2 }}>
-              <ListItem alignItems="flex-start">
-                <ListItemAvatar>
-                  <Avatar>
-                    <PersonIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Box display="flex" alignItems="center">
-                      <Typography variant="h6" component="span">
-                        {session.patientName}, {session.age}
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        {loading
+          ? Array(3).fill(0).map((_, index) => (
+              <Grid item xs={12} md={6} lg={4} key={`skeleton-${index}`}>
+                <Card>
+                  <CardHeader
+                    title={<Skeleton variant="text" width="70%" />}
+                    subheader={<Skeleton variant="text" width="40%" />}
+                  />
+                  <Divider />
+                  <CardContent>
+                    <Skeleton variant="text" height={20} />
+                    <Skeleton variant="text" height={20} />
+                    <Skeleton variant="text" height={20} width="60%" />
+                  </CardContent>
+                  <CardActions>
+                    <Skeleton variant="rectangular" width={80} height={30} />
+                    <Skeleton variant="rectangular" width={80} height={30} sx={{ ml: 1 }} />
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          : filteredSessions.map((session) => (
+              <Grid item xs={12} md={6} lg={4} key={session.id}>
+                <Card>
+                  <CardHeader
+                    title={
+                      <Typography variant="h6" component="div">
+                        {session.patientName || 'Unbenannter Patient'}
                       </Typography>
+                    }
+                    subheader={
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDate(session.createdAt)}
+                        </Typography>
+                      </Box>
+                    }
+                    action={
                       <Chip 
                         label={getPriorityLabel(session.priority)} 
-                        color={getPriorityColor(session.priority)} 
-                        size="small" 
-                        sx={{ ml: 1 }}
+                        color={getPriorityColor(session.priority)}
+                        size="small"
                       />
+                    }
+                  />
+                  <Divider />
+                  <CardContent>
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        <strong>Alter:</strong> {session.age || 'Unbekannt'} Jahre
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        <strong>Medic:</strong> {session.medic?.name || 'Nicht zugewiesen'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Symptome:</strong> {session.symptoms?.join(', ') || 'Keine Angaben'}
+                      </Typography>
                     </Box>
-                  }
-                  secondary={
-                    <React.Fragment>
-                      <Typography variant="body2" component="span" color="text.primary">
-                        Seit: {formatDate(session.createdAt)}
-                      </Typography>
-                      <Typography variant="body2" display="block">
-                        Medic: {session.medic.name}
-                      </Typography>
-                      <Typography variant="body2" display="block">
-                        Symptome: {session.symptoms.join(', ')}
-                      </Typography>
-                      <Box mt={1}>
-                        <Chip 
-                          label={`Puls: ${session.vitalSigns.heartRate}`} 
-                          size="small" 
-                          sx={{ mr: 1, mb: 1 }}
-                        />
-                        <Chip 
-                          label={`Blutdruck: ${session.vitalSigns.bloodPressure}`} 
-                          size="small" 
-                          sx={{ mr: 1, mb: 1 }}
-                        />
-                        <Chip 
-                          label={`SpO₂: ${session.vitalSigns.oxygenSaturation}%`} 
-                          size="small" 
-                          sx={{ mb: 1 }}
-                        />
+                    
+                    {session.vitalSigns && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2" fontWeight="bold" gutterBottom>
+                          Vitalwerte:
+                        </Typography>
+                        <Grid container spacing={1}>
+                          <Grid item xs={4}>
+                            <Typography variant="body2" align="center">
+                              <strong>Puls</strong>
+                              <Box>{session.vitalSigns.heartRate || '—'}</Box>
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="body2" align="center">
+                              <strong>RR</strong>
+                              <Box>{session.vitalSigns.bloodPressure || '—'}</Box>
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="body2" align="center">
+                              <strong>SpO₂</strong>
+                              <Box>{session.vitalSigns.oxygenSaturation || '—'}%</Box>
+                            </Typography>
+                          </Grid>
+                        </Grid>
                       </Box>
-                    </React.Fragment>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <Box>
+                    )}
+                  </CardContent>
+                  <CardActions>
                     <Button
-                      variant="contained"
-                      color="primary"
+                      size="small"
+                      variant="outlined"
                       startIcon={<ViewIcon />}
                       onClick={() => handleViewSession(session.id)}
-                      sx={{ mt: 1, mb: 1 }}
                     >
-                      Details
+                      Ansehen
                     </Button>
                     {session.status === 'PENDING' && (
                       <Button
-                        variant="outlined"
-                        color="success"
-                        startIcon={<CheckCircleIcon />}
+                        size="small"
+                        variant="contained"
+                        color="primary"
                         onClick={() => handleAcceptSession(session.id)}
-                        sx={{ mt: 1, mb: 1, ml: 1 }}
                       >
                         Annehmen
                       </Button>
                     )}
-                  </Box>
-                </ListItemSecondaryAction>
-              </ListItem>
-            </Paper>
-          ))
-        )}
-      </List>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+      </Grid>
     );
   };
 
-  // Main render
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Arzt-Dashboard
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Dashboard
+        </Typography>
+        <Button 
+          startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+          onClick={handleRefresh}
+          disabled={loading}
+        >
+          Aktualisieren
+        </Button>
+      </Box>
 
-      {loading ? (
-        <Box display="flex" justifyContent="center" p={5}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Paper sx={{ p: 3, bgcolor: 'error.light', color: 'error.contrastText' }}>
-          <Typography>{error}</Typography>
-          <Button 
-            variant="outlined" 
-            sx={{ mt: 2, color: 'white', borderColor: 'white' }}
-            onClick={() => window.location.reload()}
-          >
-            Erneut versuchen
-          </Button>
-        </Paper>
-      ) : (
-        <Box>
-          {/* Stats Section */}
-          <Box mb={4}>
-            {renderStatsCards()}
-          </Box>
-
-          {/* Sessions Section */}
-          <Box>
-            <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 3 }}>
-              Meine Sessions
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            
-            <Tabs 
-              value={tabValue} 
-              onChange={handleTabChange}
-              sx={{ mb: 2 }}
-            >
-              <Tab label="Aktiv" />
-              <Tab label="Wartend" />
-              <Tab label="Alle" />
-            </Tabs>
-            
-            {renderSessionList()}
-          </Box>
-        </Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
+
+      {renderStatsCards()}
+
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" component="h2" gutterBottom>
+            Aktuelle Sessions
+          </Typography>
+          <Button onClick={() => navigate('/doctor/sessions')}>
+            Alle anzeigen
+          </Button>
+        </Box>
+        
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="session tabs">
+            <Tab label="Alle" />
+            <Tab label="Aktiv" />
+            <Tab label="Wartend" />
+          </Tabs>
+        </Box>
+        
+        {renderSessionList()}
+      </Box>
     </Box>
   );
 };

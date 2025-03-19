@@ -3,7 +3,9 @@ version: '3.8'
 services:
   # Backend API service
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     restart: always
     ports:
       - "3000:3000"
@@ -14,9 +16,6 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_change_me_in_production}
       - JWT_EXPIRATION=1d
       - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-password}@db:5432/telemedix
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     depends_on:
       - db
 
