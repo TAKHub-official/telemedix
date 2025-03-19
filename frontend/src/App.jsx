@@ -1,32 +1,45 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import AdminLayout from './components/layouts/AdminLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
-import AdminDashboard from './pages/admin/Dashboard';
-import UserManagement from './pages/admin/UserManagement';
-import SystemSettings from './pages/admin/SystemSettings';
 
-// App component with proper protected routes
+// Pages
+import AdminDashboard from './pages/admin/Dashboard';
+import TestPage from './pages/doctor/TestPage';
+
+// Simple test page directly included
+const SimplePage = () => (
+  <div style={{ padding: '20px' }}>
+    <h1>Einfache Test-Seite</h1>
+    <p>Diese Seite sollte immer funktionieren, unabhängig von der Authentifizierung.</p>
+  </div>
+);
+
 function App() {
-  // Get auth state from Redux
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   
-  console.log('Auth state:', { isAuthenticated, user });
+  // Debug
+  useEffect(() => {
+    console.log('Auth state (simplified):', { 
+      isAuthenticated, 
+      userRole: user?.role
+    });
+  }, [isAuthenticated, user]);
 
-  // Function to determine the default route based on user role
-  const getDefaultRoute = () => {
-    if (!isAuthenticated) return '/login';
+  // Determine where to redirect based on user role
+  const getRedirectPath = () => {
+    if (!user?.role) return '/login';
     
-    switch (user?.role) {
+    switch (user.role) {
       case 'ADMIN':
         return '/admin/dashboard';
       case 'DOCTOR':
-        return '/doctor/dashboard';
+        return '/doctor-test';
       case 'MEDIC':
-        return '/medic/dashboard';
+        return '/medic';
       default:
         return '/login';
     }
@@ -34,35 +47,38 @@ function App() {
 
   return (
     <Routes>
-      {/* Login route - redirect to appropriate dashboard if already logged in */}
+      {/* Public route for testing */}
+      <Route path="/simple-test" element={<SimplePage />} />
+      
+      {/* Login route - with automatic redirection */}
       <Route 
         path="/login" 
-        element={isAuthenticated ? <Navigate to={getDefaultRoute()} /> : <Login />} 
+        element={isAuthenticated ? <Navigate to={getRedirectPath()} /> : <Login />} 
       />
       
-      {/* Admin routes */}
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute
-            isAllowed={isAuthenticated && user?.role === 'ADMIN'}
-            redirectPath="/login"
-          >
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
+      {/* Admin route */}
+      <Route path="/admin" element={
+        <ProtectedRoute isAllowed={isAuthenticated && user?.role === 'ADMIN'} redirectPath="/login">
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
         <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="settings" element={<SystemSettings />} />
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
       
+      {/* Doctor route (simplified) */}
+      <Route path="/doctor-test" element={
+        <ProtectedRoute isAllowed={isAuthenticated && user?.role === 'DOCTOR'} redirectPath="/login">
+          <TestPage />
+        </ProtectedRoute>
+      } />
+      
       {/* Root redirect */}
-      <Route 
-        path="/" 
-        element={<Navigate to={getDefaultRoute()} />} 
-      />
+      <Route path="/" element={
+        isAuthenticated 
+          ? <Navigate to={getRedirectPath()} />
+          : <Navigate to="/login" />
+      } />
       
       {/* 404 route */}
       <Route path="*" element={<NotFound />} />

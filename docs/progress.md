@@ -19,6 +19,7 @@
 - ✅ Socket.IO für Echtzeit-Kommunikation eingerichtet
 - ✅ Seed-Daten für die Entwicklung hinzugefügt
 - ✅ API-Routen für Auth, User und Sessions
+- ✅ Migration von SQLite zu PostgreSQL abgeschlossen
 
 ### Frontend
 - ✅ React App mit Vite aufgesetzt
@@ -59,11 +60,11 @@
 5. ✅ Echtzeit-Events mit Socket.io implementieren für Updates
 
 ### Phase 3: Frontend-Seiten implementieren
-1. Admin-Bereich
-   - Dashboard mit Übersicht
-   - Benutzerverwaltung
-   - Systemeinstellungen
-2. Arzt-Bereich
+1. Admin-Bereich (abgeschlossen)
+   - ✅ Dashboard mit Übersicht
+   - ✅ Benutzerverwaltung
+   - ✅ Systemeinstellungen
+2. Arzt-Bereich (in Bearbeitung)
    - Session-Übersicht und -Liste
    - Session-Detail-Ansicht
    - Behandlungsplan-Erstellung
@@ -124,7 +125,7 @@
 - CI/CD (geplant)
 
 ## Aktuelle Herausforderungen
-- Implementierung der Frontend-Komponenten für die verschiedenen Benutzerrollen
+- Implementierung der Arzt- und Medic-Benutzeroberflächen
 - Implementierung der TreatmentPlan-Routen und -Controller
 - Offline-Funktionalität und Synchronisierung
 - Echtzeit-Kommunikation zwischen Medic und Arzt 
