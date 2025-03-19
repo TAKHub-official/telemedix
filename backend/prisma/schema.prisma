@@ -1,0 +1,25 @@
+// This is the Prisma schema file for TeleMedix
+// It defines the database models and relationships
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model - represents all users in the system
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  firstName       String
+  lastName        String
+  role            String    @default("MEDIC") // ADMIN, DOCTOR, MEDIC
+  status          String    @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLoginAt     DateTime?
+} 

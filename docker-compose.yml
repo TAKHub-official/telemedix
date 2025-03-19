@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Backend API service
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=http://localhost
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key_change_me_in_production}
+      - JWT_EXPIRATION=1d
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-password}@db:5432/telemedix
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - db
+
+  # Frontend web service
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+
+  # Database service
+  db:
+    image: postgres:14-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=telemedix
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# Volume for database persistence
+volumes:
+  postgres_data: 
