@@ -21,6 +21,7 @@
 - ✅ API-Routen für Auth, User und Sessions
 - ✅ Migration von SQLite zu PostgreSQL abgeschlossen
 - ✅ Test-Sessions für Entwicklung und Demonstration erstellt
+- ✅ Darstellung von wartenden Sessions (Status: PENDING) im Frontend implementiert
 
 ### Frontend
 - ✅ React App mit Vite aufgesetzt
@@ -132,6 +133,7 @@
 
 ## Aktuelle Herausforderungen
 - ✅ Implementierung der Arzt-Benutzeroberfläche mit Dashboard und Session-Verwaltung
+- ✅ Wartende Sessions für Ärzte sichtbar machen
 - Implementierung der Session-Detailansicht
 - Implementierung der TreatmentPlan-Routen und -Controller
 - Offline-Funktionalität und Synchronisierung
