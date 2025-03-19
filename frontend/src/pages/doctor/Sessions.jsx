@@ -23,7 +23,9 @@ import {
   Grid,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Tooltip,
+  Divider
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -31,79 +33,10 @@ import {
   CheckCircle as CheckCircleIcon,
   AccessTime as AccessTimeIcon,
   Error as ErrorIcon,
-  PersonAdd as PersonAddIcon
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { api as apiService } from '../../services/api';
-
-// Mock data for sessions
-const mockSessions = [
-  {
-    id: 'sess-001',
-    patientName: 'Max Mustermann',
-    age: 45,
-    priority: 'HIGH',
-    status: 'ACTIVE',
-    createdAt: '2025-03-19T10:30:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-002',
-    patientName: 'Anna Schmidt',
-    age: 32,
-    priority: 'MEDIUM',
-    status: 'ACTIVE',
-    createdAt: '2025-03-19T11:15:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-003',
-    patientName: 'Julia Weber',
-    age: 28,
-    priority: 'LOW',
-    status: 'PENDING',
-    createdAt: '2025-03-19T11:45:00Z',
-    assignedTo: null,
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-004',
-    patientName: 'Peter Klein',
-    age: 55,
-    priority: 'HIGH',
-    status: 'PENDING',
-    createdAt: '2025-03-19T12:10:00Z',
-    assignedTo: null,
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-005',
-    patientName: 'Maria Schneider',
-    age: 65,
-    priority: 'MEDIUM',
-    status: 'COMPLETED',
-    createdAt: '2025-03-18T15:30:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  }
-];
+import { sessionsAPI } from '../../services/api';
 
 const Sessions = () => {
   const [sessions, setSessions] = useState([]);
@@ -136,47 +69,48 @@ const Sessions = () => {
 
   // Load sessions
   useEffect(() => {
-    const loadSessions = async () => {
-      try {
-        setLoading(true);
-        
-        // In a real implementation, you would fetch data from the API
-        // For now, we'll simulate an API delay with mock data
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Set mock data
-        setSessions(mockSessions);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading sessions:', err);
-        setError('Fehler beim Laden der Sessions');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadSessions();
   }, []);
 
-  // Handle sort request
+  const loadSessions = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch sessions from API
+      const response = await sessionsAPI.getAll();
+      
+      if (response && response.data) {
+        // Extrahieren des sessions-Array aus der API-Antwort
+        const sessionsArray = response.data.sessions || [];
+        setSessions(sessionsArray);
+      } else {
+        throw new Error('Invalid response format');
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error loading sessions:', err);
+      setError('Fehler beim Laden der Sessions. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
   };
-
-  // Handle page change
+  
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-
-  // Handle rows per page change
+  
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
-  // Handle filter change
+  
   const handleFilterChange = (name, value) => {
     setFilters({
       ...filters,
@@ -184,24 +118,20 @@ const Sessions = () => {
     });
     setPage(0); // Reset to first page when filter changes
   };
-
-  // Handle view session
+  
   const handleViewSession = (id) => {
     navigate(`/doctor/sessions/${id}`);
   };
-
-  // Handle accept session
+  
   const handleAcceptSession = async (id) => {
     try {
-      // In a real implementation, this would call the API to update the session
-      console.log(`Accepting session: ${id}`);
+      setLoading(true);
       
-      // For mock data, we'll update the local state
-      setSessions(sessions.map(session => 
-        session.id === id 
-          ? { ...session, status: 'ACTIVE', assignedTo: 'Dr. Thomas Müller' } 
-          : session
-      ));
+      // Call API to assign session to current doctor
+      await sessionsAPI.assign(id);
+      
+      // Refresh sessions
+      await loadSessions();
       
       // Show success notification
       setNotification({
@@ -216,64 +146,74 @@ const Sessions = () => {
         message: 'Fehler beim Annehmen der Session',
         severity: 'error'
       });
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Handle close notification
+  
+  const handleRefresh = () => {
+    loadSessions();
+  };
+  
   const handleCloseNotification = () => {
     setNotification({
       ...notification,
       open: false
     });
   };
-
-  // Filter sessions
+  
   const filterSessions = () => {
     return sessions.filter(session => {
-      // Search filter
-      const searchMatch = filters.search === '' || 
-        session.patientName.toLowerCase().includes(filters.search.toLowerCase());
+      // Search filter (case insensitive)
+      const matchesSearch = filters.search === '' || 
+        (session.patientName && session.patientName.toLowerCase().includes(filters.search.toLowerCase())) ||
+        (session.medic && session.medic.name && session.medic.name.toLowerCase().includes(filters.search.toLowerCase())) ||
+        (session.id && session.id.toLowerCase().includes(filters.search.toLowerCase()));
       
       // Status filter
-      const statusMatch = filters.status === 'all' || session.status === filters.status;
+      const matchesStatus = filters.status === 'all' || session.status === filters.status;
       
       // Priority filter
-      const priorityMatch = filters.priority === 'all' || session.priority === filters.priority;
+      const matchesPriority = filters.priority === 'all' || session.priority === filters.priority;
       
-      return searchMatch && statusMatch && priorityMatch;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
   };
-
-  // Sort sessions
+  
   const sortSessions = (data) => {
+    if (!orderBy) return data;
+    
     return data.sort((a, b) => {
-      let comparison = 0;
+      let aValue = a[orderBy];
+      let bValue = b[orderBy];
       
-      // Sort by selected column
-      switch (orderBy) {
-        case 'patientName':
-          comparison = a.patientName.localeCompare(b.patientName);
-          break;
-        case 'priority':
-          const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-          comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
-          break;
-        case 'status':
-          const statusOrder = { PENDING: 0, ACTIVE: 1, COMPLETED: 2 };
-          comparison = statusOrder[a.status] - statusOrder[b.status];
-          break;
-        case 'createdAt':
-        default:
-          comparison = new Date(a.createdAt) - new Date(b.createdAt);
-          break;
+      // Handle nested properties
+      if (orderBy === 'medic.name') {
+        aValue = a.medic ? a.medic.name : '';
+        bValue = b.medic ? b.medic.name : '';
       }
       
-      // Apply sort direction
-      return order === 'desc' ? -comparison : comparison;
+      // Handle date strings
+      if (orderBy === 'createdAt') {
+        return order === 'asc'
+          ? new Date(aValue) - new Date(bValue)
+          : new Date(bValue) - new Date(aValue);
+      }
+      
+      // Handle strings (case insensitive)
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return order === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      // Handle other types
+      return order === 'asc'
+        ? (aValue < bValue ? -1 : aValue > bValue ? 1 : 0)
+        : (bValue < aValue ? -1 : bValue > aValue ? 1 : 0);
     });
   };
-
-  // Get priority color
+  
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'HIGH':
@@ -286,25 +226,38 @@ const Sessions = () => {
         return 'default';
     }
   };
-
-  // Get status color and icon
-  const getStatusInfo = (status) => {
-    switch (status) {
-      case 'ACTIVE':
-        return { color: 'primary', icon: <CheckCircleIcon />, label: 'Aktiv' };
-      case 'PENDING':
-        return { color: 'warning', icon: <AccessTimeIcon />, label: 'Wartend' };
-      case 'COMPLETED':
-        return { color: 'success', icon: <CheckCircleIcon />, label: 'Abgeschlossen' };
-      case 'CANCELLED':
-        return { color: 'error', icon: <ErrorIcon />, label: 'Abgebrochen' };
+  
+  const getPriorityLabel = (priority) => {
+    switch (priority) {
+      case 'HIGH':
+        return 'Hoch';
+      case 'MEDIUM':
+        return 'Mittel';
+      case 'LOW':
+        return 'Niedrig';
       default:
-        return { color: 'default', icon: null, label: status };
+        return priority;
     }
   };
-
-  // Format date
+  
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return { label: 'Wartend', icon: <AccessTimeIcon fontSize="small" />, color: 'warning' };
+      case 'ACTIVE':
+        return { label: 'Aktiv', icon: <CheckCircleIcon fontSize="small" />, color: 'success' };
+      case 'COMPLETED':
+        return { label: 'Abgeschlossen', icon: <CheckCircleIcon fontSize="small" />, color: 'info' };
+      case 'CANCELLED':
+        return { label: 'Abgebrochen', icon: <ErrorIcon fontSize="small" />, color: 'error' };
+      default:
+        return { label: status, icon: null, color: 'default' };
+    }
+  };
+  
   const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
     const date = new Date(dateString);
     return date.toLocaleTimeString('de-DE', {
       hour: '2-digit',
@@ -312,12 +265,10 @@ const Sessions = () => {
       hour12: false
     }) + ', ' + date.toLocaleDateString('de-DE');
   };
-
-  // Get filtered and sorted data
-  const filteredSessions = sortSessions(filterSessions());
   
-  // Apply pagination
-  const paginatedSessions = filteredSessions.slice(
+  const filteredSessions = filterSessions();
+  const sortedSessions = sortSessions(filteredSessions);
+  const paginatedSessions = sortedSessions.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
@@ -329,22 +280,28 @@ const Sessions = () => {
           Sessions
         </Typography>
         <Button
-          variant="contained"
-          color="primary"
-          startIcon={<PersonAddIcon />}
-          onClick={() => navigate('/doctor/sessions/new')}
+          variant="outlined"
+          startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+          onClick={handleRefresh}
+          disabled={loading}
         >
-          Neue Session
+          Aktualisieren
         </Button>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
-              label="Suche"
+              label="Suche (Patient, Medic, ID)"
               variant="outlined"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -357,7 +314,7 @@ const Sessions = () => {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth variant="outlined">
               <InputLabel>Status</InputLabel>
               <Select
@@ -373,7 +330,7 @@ const Sessions = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth variant="outlined">
               <InputLabel>Priorität</InputLabel>
               <Select
@@ -388,34 +345,13 @@ const Sessions = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button 
-              fullWidth 
-              variant="outlined" 
-              onClick={() => setFilters({ search: '', status: 'all', priority: 'all' })}
-            >
-              Filter zurücksetzen
-            </Button>
-          </Grid>
         </Grid>
       </Paper>
 
-      {/* Sessions Table */}
-      {loading ? (
+      {loading && paginatedSessions.length === 0 ? (
         <Box display="flex" justifyContent="center" p={5}>
           <CircularProgress />
         </Box>
-      ) : error ? (
-        <Paper sx={{ p: 3, bgcolor: 'error.light', color: 'error.contrastText' }}>
-          <Typography>{error}</Typography>
-          <Button 
-            variant="outlined" 
-            sx={{ mt: 2, color: 'white', borderColor: 'white' }}
-            onClick={() => window.location.reload()}
-          >
-            Erneut versuchen
-          </Button>
-        </Paper>
       ) : (
         <Paper>
           <TableContainer>
@@ -424,11 +360,29 @@ const Sessions = () => {
                 <TableRow>
                   <TableCell>
                     <TableSortLabel
+                      active={orderBy === 'id'}
+                      direction={orderBy === 'id' ? order : 'asc'}
+                      onClick={() => handleRequestSort('id')}
+                    >
+                      ID
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
                       active={orderBy === 'patientName'}
                       direction={orderBy === 'patientName' ? order : 'asc'}
                       onClick={() => handleRequestSort('patientName')}
                     >
                       Patient
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'createdAt'}
+                      direction={orderBy === 'createdAt' ? order : 'asc'}
+                      onClick={() => handleRequestSort('createdAt')}
+                    >
+                      Erstellungsdatum
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
@@ -451,22 +405,23 @@ const Sessions = () => {
                   </TableCell>
                   <TableCell>
                     <TableSortLabel
-                      active={orderBy === 'createdAt'}
-                      direction={orderBy === 'createdAt' ? order : 'asc'}
-                      onClick={() => handleRequestSort('createdAt')}
+                      active={orderBy === 'medic.name'}
+                      direction={orderBy === 'medic.name' ? order : 'asc'}
+                      onClick={() => handleRequestSort('medic.name')}
                     >
-                      Erstellt am
+                      Medic
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell>Medic</TableCell>
-                  <TableCell>Aktionen</TableCell>
+                  <TableCell align="right">Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {paginatedSessions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      Keine Sessions gefunden
+                    <TableCell colSpan={7} align="center">
+                      <Typography variant="body1" p={3}>
+                        Keine Sessions gefunden
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -474,48 +429,80 @@ const Sessions = () => {
                     const statusInfo = getStatusInfo(session.status);
                     
                     return (
-                      <TableRow key={session.id}>
+                      <TableRow 
+                        key={session.id}
+                        hover
+                        sx={{ 
+                          '&:hover': { 
+                            bgcolor: 'action.hover',
+                            cursor: 'pointer'
+                          }
+                        }}
+                        onClick={() => handleViewSession(session.id)}
+                      >
+                        <TableCell>{session.id}</TableCell>
                         <TableCell>
-                          {session.patientName}, {session.age}
+                          <Box>
+                            <Typography variant="body2">
+                              {session.patientName || 'Unbenannt'}
+                            </Typography>
+                            {session.age && (
+                              <Typography variant="caption" color="text.secondary">
+                                {session.age} Jahre
+                              </Typography>
+                            )}
+                          </Box>
                         </TableCell>
+                        <TableCell>{formatDate(session.createdAt)}</TableCell>
                         <TableCell>
                           <Chip
-                            label={session.priority}
-                            color={getPriorityColor(session.priority)}
                             size="small"
+                            label={getPriorityLabel(session.priority)}
+                            color={getPriorityColor(session.priority)}
                           />
                         </TableCell>
                         <TableCell>
                           <Chip
+                            size="small"
                             icon={statusInfo.icon}
                             label={statusInfo.label}
                             color={statusInfo.color}
-                            size="small"
                           />
                         </TableCell>
-                        <TableCell>{formatDate(session.createdAt)}</TableCell>
-                        <TableCell>{session.medic.name}</TableCell>
                         <TableCell>
+                          {session.medic?.name || 'Nicht zugewiesen'}
+                        </TableCell>
+                        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                           <Box>
-                            <IconButton
-                              color="primary"
-                              onClick={() => handleViewSession(session.id)}
-                              title="Details anzeigen"
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
+                            <Tooltip title="Details anzeigen">
+                              <IconButton
+                                color="primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewSession(session.id);
+                                }}
+                                size="small"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Tooltip>
                             
                             {session.status === 'PENDING' && (
-                              <Button
-                                variant="outlined"
-                                color="success"
-                                size="small"
-                                startIcon={<CheckCircleIcon />}
-                                onClick={() => handleAcceptSession(session.id)}
-                                sx={{ ml: 1 }}
-                              >
-                                Annehmen
-                              </Button>
+                              <Tooltip title="Session annehmen">
+                                <Button
+                                  variant="outlined"
+                                  color="success"
+                                  size="small"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptSession(session.id);
+                                  }}
+                                  sx={{ ml: 1 }}
+                                >
+                                  Annehmen
+                                </Button>
+                              </Tooltip>
                             )}
                           </Box>
                         </TableCell>
@@ -526,6 +513,7 @@ const Sessions = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <Divider />
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"

@@ -24,6 +24,114 @@ model User {
   updatedAt       DateTime    @updatedAt
   lastLoginAt     DateTime?
   auditLogs       AuditLog[]
+  createdSessions Session[]   @relation("CreatedBy")
+  assignedSessions Session[]  @relation("AssignedTo")
+  notifications   Notification[]
+}
+
+// Session model - represents a medical consultation session
+model Session {
+  id              String      @id @default(uuid())
+  title           String
+  patientCode     String
+  status          String      @default("OPEN") // OPEN, ASSIGNED, IN_PROGRESS, COMPLETED
+  priority        String      @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  completedAt     DateTime?
+  createdById     String
+  createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId    String?
+  assignedTo      User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
+  medicalRecord   MedicalRecord?
+  treatmentPlan   TreatmentPlan?
+  vitalSigns      VitalSign[]
+  notes           Note[]
+  attachments     Attachment[]
+}
+
+// Medical Record model - represents a patient's medical record
+model MedicalRecord {
+  id              String      @id @default(uuid())
+  sessionId       String      @unique
+  session         Session     @relation(fields: [sessionId], references: [id])
+  patientHistory  String?
+  currentMedications String?
+  allergies       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Treatment Plan model - represents a treatment plan for a session
+model TreatmentPlan {
+  id              String      @id @default(uuid())
+  sessionId       String      @unique
+  session         Session     @relation(fields: [sessionId], references: [id])
+  diagnosis       String?
+  steps           TreatmentStep[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Treatment Step model - represents a step in a treatment plan
+model TreatmentStep {
+  id              String      @id @default(uuid())
+  treatmentPlanId String
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+  description     String
+  status          String      @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Vital Sign model - represents vital signs recorded during a session
+model VitalSign {
+  id              String      @id @default(uuid())
+  sessionId       String
+  session         Session     @relation(fields: [sessionId], references: [id])
+  type            String      // e.g., "BLOOD_PRESSURE", "HEART_RATE", etc.
+  value           String
+  unit            String?
+  timestamp       DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Note model - represents notes added to a session
+model Note {
+  id              String      @id @default(uuid())
+  sessionId       String
+  session         Session     @relation(fields: [sessionId], references: [id])
+  content         String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Attachment model - represents files attached to a session
+model Attachment {
+  id              String      @id @default(uuid())
+  sessionId       String
+  session         Session     @relation(fields: [sessionId], references: [id])
+  filename        String
+  filepath        String
+  filetype        String
+  filesize        Int
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Notification model - represents system notifications
+model Notification {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  type            String      // e.g., "NEW_SESSION", "SESSION_ASSIGNED", etc.
+  title           String
+  message         String
+  read            Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 // Audit Log model - for tracking system actions

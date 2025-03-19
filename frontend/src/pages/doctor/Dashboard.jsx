@@ -62,21 +62,26 @@ const DoctorDashboard = () => {
       setError(null);
       
       // Fetch sessions from the API
-      const response = await sessionsAPI.getAll({
-        limit: 5, // Only get the most recent sessions for the dashboard
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
-      });
+      // Note: Removing params for now to ensure it works with the current backend
+      const response = await sessionsAPI.getAll();
+      
+      if (!response || !response.data) {
+        throw new Error('Invalid API response structure');
+      }
       
       const sessionData = response.data;
+      console.log('Session data:', sessionData);
       
-      // Set sessions
-      setSessions(sessionData);
+      // Set sessions - using the sessions array from the response
+      const sessionsArray = sessionData.sessions || [];
+      setSessions(sessionsArray);
       
       // Calculate stats from the response data
-      const activeSessions = sessionData.filter(session => session.status === 'ACTIVE').length;
-      const pendingSessions = sessionData.filter(session => session.status === 'PENDING').length;
-      const completedToday = sessionData.filter(session => {
+      const activeSessions = sessionsArray.filter(session => session.status === 'ACTIVE').length;
+      const pendingSessions = sessionsArray.filter(session => session.status === 'PENDING').length;
+      const completedToday = sessionsArray.filter(session => {
+        if (!session.updatedAt) return false;
+        
         const today = new Date().toISOString().split('T')[0];
         const sessionDate = new Date(session.updatedAt).toISOString().split('T')[0];
         return session.status === 'COMPLETED' && sessionDate === today;
@@ -91,6 +96,9 @@ const DoctorDashboard = () => {
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setError('Fehler beim Laden der Dashboard-Daten. Bitte versuchen Sie es später erneut.');
+      
+      // Set empty sessions to prevent other errors
+      setSessions([]);
     } finally {
       setLoading(false);
     }
@@ -111,11 +119,8 @@ const DoctorDashboard = () => {
     try {
       setLoading(true);
       
-      // Get the current user ID from the Redux store (could be implemented differently)
-      // For now, we'll assume the doctor ID is available
-      
       // Update the session status in the backend
-      await sessionsAPI.assign(sessionId, 'current_doctor_id'); // In a real app, get the doctor ID dynamically
+      await sessionsAPI.assign(sessionId);
       
       // Refresh data
       await loadDashboardData();
@@ -276,15 +281,35 @@ const DoctorDashboard = () => {
 
   // Render session list
   const renderSessionList = () => {
-    const filteredSessions = sessions.filter(session => {
-      // Filter based on tab value
-      if (tabValue === 0) return true; // All sessions
-      if (tabValue === 1) return session.status === 'ACTIVE'; // Active
-      if (tabValue === 2) return session.status === 'PENDING'; // Pending
-      return false;
-    });
+    if (loading && sessions.length === 0) {
+      return (
+        <Grid container spacing={3} sx={{ mt: 1 }}>
+          {Array(3).fill(0).map((_, index) => (
+            <Grid item xs={12} md={6} lg={4} key={`skeleton-${index}`}>
+              <Card>
+                <CardHeader
+                  title={<Skeleton variant="text" width="70%" />}
+                  subheader={<Skeleton variant="text" width="40%" />}
+                />
+                <Divider />
+                <CardContent>
+                  <Skeleton variant="text" height={20} />
+                  <Skeleton variant="text" height={20} />
+                  <Skeleton variant="text" height={20} width="60%" />
+                </CardContent>
+                <CardActions>
+                  <Skeleton variant="rectangular" width={80} height={30} />
+                  <Skeleton variant="rectangular" width={80} height={30} sx={{ ml: 1 }} />
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      );
+    }
 
-    if (filteredSessions.length === 0 && !loading) {
+    // Guard against null or undefined sessions
+    if (!sessions || sessions.length === 0) {
       return (
         <Alert severity="info" sx={{ mt: 2 }}>
           Keine Sessions gefunden.
@@ -292,119 +317,119 @@ const DoctorDashboard = () => {
       );
     }
 
+    const filteredSessions = sessions.filter(session => {
+      if (!session) return false;
+      
+      // Filter based on tab value
+      if (tabValue === 0) return true; // All sessions
+      if (tabValue === 1) return session.status === 'ACTIVE'; // Active
+      if (tabValue === 2) return session.status === 'PENDING'; // Pending
+      return false;
+    });
+
+    if (filteredSessions.length === 0) {
+      return (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Keine Sessions gefunden.
+        </Alert>
+      );
+    }
+
+    // Only show up to 6 sessions on the dashboard
+    const limitedSessions = filteredSessions.slice(0, 6);
+
     return (
       <Grid container spacing={3} sx={{ mt: 1 }}>
-        {loading
-          ? Array(3).fill(0).map((_, index) => (
-              <Grid item xs={12} md={6} lg={4} key={`skeleton-${index}`}>
-                <Card>
-                  <CardHeader
-                    title={<Skeleton variant="text" width="70%" />}
-                    subheader={<Skeleton variant="text" width="40%" />}
+        {limitedSessions.map((session) => (
+          <Grid item xs={12} md={6} lg={4} key={session.id || Math.random()}>
+            <Card>
+              <CardHeader
+                title={
+                  <Typography variant="h6" component="div">
+                    {session.patientName || 'Unbenannter Patient'}
+                  </Typography>
+                }
+                subheader={
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                    <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {formatDate(session.createdAt)}
+                    </Typography>
+                  </Box>
+                }
+                action={
+                  <Chip 
+                    label={getPriorityLabel(session.priority)} 
+                    color={getPriorityColor(session.priority)}
+                    size="small"
                   />
-                  <Divider />
-                  <CardContent>
-                    <Skeleton variant="text" height={20} />
-                    <Skeleton variant="text" height={20} />
-                    <Skeleton variant="text" height={20} width="60%" />
-                  </CardContent>
-                  <CardActions>
-                    <Skeleton variant="rectangular" width={80} height={30} />
-                    <Skeleton variant="rectangular" width={80} height={30} sx={{ ml: 1 }} />
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))
-          : filteredSessions.map((session) => (
-              <Grid item xs={12} md={6} lg={4} key={session.id}>
-                <Card>
-                  <CardHeader
-                    title={
-                      <Typography variant="h6" component="div">
-                        {session.patientName || 'Unbenannter Patient'}
-                      </Typography>
-                    }
-                    subheader={
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(session.createdAt)}
+                }
+              />
+              <Divider />
+              <CardContent>
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Alter:</strong> {session.age || 'Unbekannt'} Jahre
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Medic:</strong> {session.medic?.name || 'Nicht zugewiesen'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Symptome:</strong> {Array.isArray(session.symptoms) ? session.symptoms.join(', ') : 'Keine Angaben'}
+                  </Typography>
+                </Box>
+                
+                {session.vitalSigns && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" fontWeight="bold" gutterBottom>
+                      Vitalwerte:
+                    </Typography>
+                    <Grid container spacing={1}>
+                      <Grid item xs={4}>
+                        <Typography variant="body2" align="center">
+                          <strong>Puls</strong>
+                          <Box>{session.vitalSigns.heartRate || '—'}</Box>
                         </Typography>
-                      </Box>
-                    }
-                    action={
-                      <Chip 
-                        label={getPriorityLabel(session.priority)} 
-                        color={getPriorityColor(session.priority)}
-                        size="small"
-                      />
-                    }
-                  />
-                  <Divider />
-                  <CardContent>
-                    <Box sx={{ mb: 1.5 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        <strong>Alter:</strong> {session.age || 'Unbekannt'} Jahre
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        <strong>Medic:</strong> {session.medic?.name || 'Nicht zugewiesen'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Symptome:</strong> {session.symptoms?.join(', ') || 'Keine Angaben'}
-                      </Typography>
-                    </Box>
-                    
-                    {session.vitalSigns && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" fontWeight="bold" gutterBottom>
-                          Vitalwerte:
+                      </Grid>
+                      <Grid item xs={4}>
+                        <Typography variant="body2" align="center">
+                          <strong>RR</strong>
+                          <Box>{session.vitalSigns.bloodPressure || '—'}</Box>
                         </Typography>
-                        <Grid container spacing={1}>
-                          <Grid item xs={4}>
-                            <Typography variant="body2" align="center">
-                              <strong>Puls</strong>
-                              <Box>{session.vitalSigns.heartRate || '—'}</Box>
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={4}>
-                            <Typography variant="body2" align="center">
-                              <strong>RR</strong>
-                              <Box>{session.vitalSigns.bloodPressure || '—'}</Box>
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={4}>
-                            <Typography variant="body2" align="center">
-                              <strong>SpO₂</strong>
-                              <Box>{session.vitalSigns.oxygenSaturation || '—'}%</Box>
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    )}
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<ViewIcon />}
-                      onClick={() => handleViewSession(session.id)}
-                    >
-                      Ansehen
-                    </Button>
-                    {session.status === 'PENDING' && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleAcceptSession(session.id)}
-                      >
-                        Annehmen
-                      </Button>
-                    )}
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
+                      </Grid>
+                      <Grid item xs={4}>
+                        <Typography variant="body2" align="center">
+                          <strong>SpO₂</strong>
+                          <Box>{session.vitalSigns.oxygenSaturation || '—'}%</Box>
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+              </CardContent>
+              <CardActions>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ViewIcon />}
+                  onClick={() => handleViewSession(session.id)}
+                >
+                  Ansehen
+                </Button>
+                {session.status === 'PENDING' && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleAcceptSession(session.id)}
+                  >
+                    Annehmen
+                  </Button>
+                )}
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
     );
   };

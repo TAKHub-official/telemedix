@@ -1,71 +1,40 @@
+// Skript zum Erstellen von Test-Sessions für Telemedix
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
-
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('Creating test sessions...');
 
   try {
-    // Create admin user
-    const adminPassword = await bcrypt.hash('admin123', 10);
-    const admin = await prisma.user.upsert({
-      where: { email: 'admin@telemedix.com' },
-      update: {},
-      create: {
-        email: 'admin@telemedix.com',
-        password: adminPassword,
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'ADMIN',
-        status: 'ACTIVE',
-      },
+    // Suche Benutzer zum Verknüpfen mit den Sessions
+    const medic = await prisma.user.findFirst({
+      where: { role: 'MEDIC' }
     });
-    console.log('Admin user created:', admin.email);
-
-    // Create doctor user
-    const doctorPassword = await bcrypt.hash('doctor123', 10);
-    const doctor = await prisma.user.upsert({
-      where: { email: 'dr.mueller@telemedix.com' },
-      update: {},
-      create: {
-        email: 'dr.mueller@telemedix.com',
-        password: doctorPassword,
-        firstName: 'Dr. Thomas',
-        lastName: 'Müller',
-        role: 'DOCTOR',
-        status: 'ACTIVE',
-      },
+    
+    if (!medic) {
+      throw new Error('Kein Medic-Benutzer gefunden');
+    }
+    
+    const doctor = await prisma.user.findFirst({
+      where: { role: 'DOCTOR' }
     });
-    console.log('Doctor user created:', doctor.email);
+    
+    if (!doctor) {
+      throw new Error('Kein Doctor-Benutzer gefunden');
+    }
+    
+    console.log(`Using medic: ${medic.email} and doctor: ${doctor.email}`);
 
-    // Create medic user
-    const medicPassword = await bcrypt.hash('medic123', 10);
-    const medic = await prisma.user.upsert({
-      where: { email: 'medic.wagner@telemedix.com' },
-      update: {},
-      create: {
-        email: 'medic.wagner@telemedix.com',
-        password: medicPassword,
-        firstName: 'Lukas',
-        lastName: 'Wagner',
-        role: 'MEDIC',
-        status: 'ACTIVE',
-      },
-    });
-    console.log('Medic user created:', medic.email);
-
-    // Delete any existing sessions to avoid duplicates
-    console.log('Cleaning up existing sessions...');
+    // Lösche vorhandene Sessions und zugehörige Daten
+    console.log('Bereinige vorhandene Sessions...');
     await prisma.note.deleteMany({});
     await prisma.medicalRecord.deleteMany({});
     await prisma.session.deleteMany({});
-    console.log('Existing sessions cleaned up');
+    console.log('Bestehende Sessions gelöscht');
 
-    // Create test sessions
-    console.log('Creating test sessions...');
+    // Erstelle Test-Sessions
     
-    // 1. Active session assigned to the doctor
+    // 1. Aktive Session dem Arzt zugewiesen
     const session1 = await prisma.session.create({
       data: {
         title: 'Akute Bauchschmerzen',
@@ -93,9 +62,9 @@ async function main() {
       }
     });
     
-    console.log('Active session created:', session1.id);
+    console.log('Aktive Session erstellt:', session1.id);
 
-    // 2. Another active session
+    // 2. Eine weitere aktive Session
     const session2 = await prisma.session.create({
       data: {
         title: 'Kopfschmerzen und Schwindel',
@@ -116,9 +85,9 @@ async function main() {
       }
     });
     
-    console.log('Another active session created:', session2.id);
+    console.log('Weitere aktive Session erstellt:', session2.id);
 
-    // 3. Pending session
+    // 3. Wartende Session
     const session3 = await prisma.session.create({
       data: {
         title: 'Routineuntersuchung',
@@ -138,9 +107,9 @@ async function main() {
       }
     });
     
-    console.log('Pending session created:', session3.id);
+    console.log('Wartende Session erstellt:', session3.id);
 
-    // 4. Completed session
+    // 4. Abgeschlossene Session
     const session4 = await prisma.session.create({
       data: {
         title: 'Nachkontrolle nach Grippe',
@@ -176,14 +145,12 @@ async function main() {
       }
     });
     
-    console.log('Completed session created:', session4.id);
+    console.log('Abgeschlossene Session erstellt:', session4.id);
 
-    console.log('All test sessions created successfully!');
-    console.log('Seeding completed.');
+    console.log('Alle Test-Sessions wurden erfolgreich erstellt!');
   } catch (error) {
-    console.error('Error seeding database:', error);
-    console.error(error.stack); // Zeigt den vollständigen Stack-Trace
-    process.exit(1);
+    console.error('Fehler beim Erstellen der Test-Sessions:', error);
+    console.error(error.stack);
   } finally {
     await prisma.$disconnect();
   }

@@ -20,6 +20,7 @@
 - ✅ Seed-Daten für die Entwicklung hinzugefügt
 - ✅ API-Routen für Auth, User und Sessions
 - ✅ Migration von SQLite zu PostgreSQL abgeschlossen
+- ✅ Test-Sessions für Entwicklung und Demonstration erstellt
 
 ### Frontend
 - ✅ React App mit Vite aufgesetzt
@@ -34,6 +35,7 @@
 - ✅ API-Services für die Backend-Kommunikation
 - ✅ Socket.IO-Service für Echtzeit-Updates
 - ✅ Rollenbasierte Anmeldung und Routing implementiert
+- ✅ CSP-Konfiguration für WebSocket-Verbindungen
 
 ### Dokumentation
 - ✅ Benutzeranleitung
@@ -65,11 +67,11 @@
    - ✅ Dashboard mit Übersicht
    - ✅ Benutzerverwaltung
    - ✅ Systemeinstellungen
-2. Arzt-Bereich (in Bearbeitung)
+2. Arzt-Bereich (teilweise abgeschlossen)
    - ✅ Grundlegende Authentifizierung und Routing für Arzt-Benutzer
-   - ⏩ DoctorLayout mit Navigation und Benutzermenü
-   - ⏩ Dashboard mit Statistiken und Session-Übersicht
-   - ⏩ Sessions-Verwaltung (Liste, Suche, Filter)
+   - ✅ DoctorLayout mit Navigation und Benutzermenü
+   - ✅ Dashboard mit Statistiken und Session-Übersicht
+   - ✅ Sessions-Verwaltung (Liste, Suche, Filter)
    - ⏩ Session-Detailansicht
    - ⏩ Behandlungsplan-Erstellung und -Bearbeitung
    - ⏩ Vitalwerte-Visualisierung
@@ -129,7 +131,8 @@
 - CI/CD (geplant)
 
 ## Aktuelle Herausforderungen
-- Implementierung der Arzt-Benutzeroberfläche mit Dashboard und Session-Verwaltung
+- ✅ Implementierung der Arzt-Benutzeroberfläche mit Dashboard und Session-Verwaltung
+- Implementierung der Session-Detailansicht
 - Implementierung der TreatmentPlan-Routen und -Controller
 - Offline-Funktionalität und Synchronisierung
 - Echtzeit-Kommunikation zwischen Medic und Arzt 

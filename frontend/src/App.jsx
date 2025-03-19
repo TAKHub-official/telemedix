@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import AdminDashboard from './pages/admin/Dashboard';
 import DoctorDashboard from './pages/doctor/Dashboard';
 import Sessions from './pages/doctor/Sessions';
+import SessionDetail from './pages/doctor/SessionDetail';
 import Archives from './pages/doctor/Archives';
 import TestPage from './pages/doctor/TestPage';
 
@@ -78,6 +79,7 @@ function App() {
       }>
         <Route path="dashboard" element={<DoctorDashboard />} />
         <Route path="sessions" element={<Sessions />} />
+        <Route path="sessions/:id" element={<SessionDetail />} />
         <Route path="archives" element={<Archives />} />
         <Route index element={<Navigate to="/doctor/dashboard" replace />} />
       </Route>
