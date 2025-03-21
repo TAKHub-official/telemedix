@@ -163,8 +163,8 @@ function Login() {
           <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
             Testbenutzer:<br />
             Admin: admin@telemedix.com / admin123<br />
-            Arzt: doctor@telemedix.com / password123<br />
-            Medic: medic.wagner@telemedix.com / medic123
+            Arzt: doctor@telemedix.com / doctor123<br />
+            Medic: medic@telemedix.com / medic123
           </Typography>
         </Box>
       </Paper>

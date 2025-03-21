@@ -119,8 +119,19 @@ const DoctorDashboard = () => {
     try {
       setLoading(true);
       
-      // Update the session status in the backend
-      await sessionsAPI.assign(sessionId);
+      // Get the current user ID from auth state
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const doctorId = currentUser?.id;
+      
+      if (!doctorId) {
+        throw new Error('Arzt-ID nicht gefunden');
+      }
+      
+      console.log('Assigning session to doctor ID:', doctorId);
+      
+      // Assign the session to the current doctor
+      // Make sure we're passing the doctorId parameter correctly
+      await sessionsAPI.assign(sessionId, doctorId);
       
       // Refresh data
       await loadDashboardData();
@@ -346,7 +357,7 @@ const DoctorDashboard = () => {
               <CardHeader
                 title={
                   <Typography variant="h6" component="div">
-                    {session.patientName || 'Unbenannter Patient'}
+                    {session.patientCode || 'Unbenannter Patient'}
                   </Typography>
                 }
                 subheader={
@@ -368,18 +379,44 @@ const DoctorDashboard = () => {
               <Divider />
               <CardContent>
                 <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Alter:</strong> {session.age || 'Unbekannt'} Jahre
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Medic:</strong> {session.medic?.name || 'Nicht zugewiesen'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <strong>Symptome:</strong> {Array.isArray(session.symptoms) ? session.symptoms.join(', ') : 'Keine Angaben'}
-                  </Typography>
+                  {/* Extract patient data from medicalRecord if available */}
+                  {(() => {
+                    // Try to parse the patientHistory from medicalRecord if it exists
+                    let patientData = {};
+                    if (session.medicalRecord && session.medicalRecord.patientHistory) {
+                      try {
+                        // Handle case where patientHistory might already be an object or a JSON string
+                        if (typeof session.medicalRecord.patientHistory === 'string') {
+                          patientData = JSON.parse(session.medicalRecord.patientHistory);
+                        } else {
+                          // If it's already an object, use it directly
+                          patientData = session.medicalRecord.patientHistory;
+                        }
+                      } catch (e) {
+                        console.error('Failed to parse patient history:', e);
+                      }
+                    }
+                    
+                    return (
+                      <>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Alter:</strong> {patientData.age || 'Unbekannt'} Jahre
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Geschlecht:</strong> {patientData.gender || 'Nicht angegeben'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Medic:</strong> {session.createdBy?.name || 'Nicht zugewiesen'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Hauptbeschwerde:</strong> {patientData.chiefComplaint || 'Keine Angaben'}
+                        </Typography>
+                      </>
+                    );
+                  })()}
                 </Box>
                 
-                {session.vitalSigns && (
+                {session.vitalSigns && session.vitalSigns.length > 0 && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2" fontWeight="bold" gutterBottom>
                       Vitalwerte:
@@ -388,19 +425,19 @@ const DoctorDashboard = () => {
                       <Grid item xs={4}>
                         <Typography variant="body2" align="center">
                           <strong>Puls</strong>
-                          <Box>{session.vitalSigns.heartRate || '—'}</Box>
+                          <Box>{session.vitalSigns[0]?.value || '—'} {session.vitalSigns[0]?.unit || ''}</Box>
                         </Typography>
                       </Grid>
                       <Grid item xs={4}>
                         <Typography variant="body2" align="center">
                           <strong>RR</strong>
-                          <Box>{session.vitalSigns.bloodPressure || '—'}</Box>
+                          <Box>{session.vitalSigns[1]?.value || '—'} {session.vitalSigns[1]?.unit || ''}</Box>
                         </Typography>
                       </Grid>
                       <Grid item xs={4}>
                         <Typography variant="body2" align="center">
                           <strong>SpO₂</strong>
-                          <Box>{session.vitalSigns.oxygenSaturation || '—'}%</Box>
+                          <Box>{session.vitalSigns[2]?.value || '—'} {session.vitalSigns[2]?.unit || ''}</Box>
                         </Typography>
                       </Grid>
                     </Grid>

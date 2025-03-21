@@ -1,21 +1,21 @@
 // TreatmentPlan controller
-const { TreatmentPlanModel, SessionModel, AuditLogModel } = require('../models');
+const { TreatmentPlanModel, SessionModel, AuditLogModel, NotificationModel } = require('../models');
 const prisma = require('../config/prisma');
+const { emitNotification } = require('../index');
 
 /**
- * Create a new treatment plan for a session
+ * Create a new treatment plan
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
 const createTreatmentPlan = async (req, res) => {
   try {
-    const { sessionId } = req.params;
-    const { diagnosis, steps } = req.body;
+    const { sessionId, diagnosis, treatment, medications, notes, status } = req.body;
     
-    // Validate input
+    // Validate session ID
     if (!sessionId) {
       return res.status(400).json({ 
-        message: 'Session-ID ist erforderlich'
+        message: 'Session ID ist erforderlich'
       });
     }
     
@@ -28,29 +28,40 @@ const createTreatmentPlan = async (req, res) => {
       });
     }
     
-    // Check if session already has a treatment plan
-    const existingPlan = await TreatmentPlanModel.findBySessionId(sessionId);
-    if (existingPlan) {
-      return res.status(409).json({ 
-        message: 'Diese Session hat bereits einen Behandlungsplan'
+    // Check if user has permission to create treatment plan
+    if (req.user.role === 'DOCTOR') {
+      if (session.assignedToId !== req.user.id) {
+        return res.status(403).json({ 
+          message: 'Zugriff verweigert. Sie können keinen Behandlungsplan für eine Session erstellen, die nicht Ihnen zugewiesen ist.'
+        });
+      }
+    } else if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Zugriff verweigert. Nur Ärzte und Administratoren können Behandlungspläne erstellen.'
       });
     }
     
-    // Check if user has access to create a treatment plan for this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
+    // Check if treatment plan already exists for this session
+    const existingPlan = await TreatmentPlanModel.findBySessionId(sessionId);
+    
+    if (existingPlan) {
+      return res.status(400).json({ 
+        message: 'Für diese Session existiert bereits ein Behandlungsplan'
       });
     }
     
     // Create treatment plan
-    const treatmentPlanData = {
+    const treatmentPlan = await TreatmentPlanModel.create({
       sessionId,
-      diagnosis: diagnosis || null,
-      steps: steps || []
-    };
-    
-    const treatmentPlan = await TreatmentPlanModel.create(treatmentPlanData);
+      doctorId: req.user.id,
+      diagnosis: diagnosis || '',
+      treatment: treatment || '',
+      medications: medications || [],
+      notes: notes || '',
+      status: status || 'DRAFT',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
     
     // Log treatment plan creation
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -62,6 +73,32 @@ const createTreatmentPlan = async (req, res) => {
       `Behandlungsplan erstellt für Session: ${session.title}`,
       ipAddress
     );
+    
+    // Notify the medic that a treatment plan has been created
+    if (session.createdById) {
+      try {
+        // Create notification record
+        await NotificationModel.create({
+          userId: session.createdById,
+          type: 'TREATMENT_PLAN',
+          title: 'Neue Behandlungsplan',
+          message: `Ein Behandlungsplan wurde für Ihre Session "${session.title}" erstellt.`,
+          read: false,
+          relatedId: sessionId
+        });
+        
+        // Send real-time notification
+        emitNotification(session.createdById, {
+          title: 'Neue Behandlungsplan',
+          content: `Ein Behandlungsplan wurde für Ihre Session "${session.title}" erstellt.`,
+          type: 'TREATMENT_PLAN',
+          relatedId: sessionId
+        });
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Continue execution even if notification creation fails
+      }
+    }
     
     res.status(201).json({
       message: 'Behandlungsplan erfolgreich erstellt',
@@ -76,13 +113,20 @@ const createTreatmentPlan = async (req, res) => {
 };
 
 /**
- * Get a treatment plan by session ID
+ * Get treatment plan by session ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
 const getTreatmentPlanBySessionId = async (req, res) => {
   try {
     const { sessionId } = req.params;
+    
+    // Validate session ID
+    if (!sessionId) {
+      return res.status(400).json({ 
+        message: 'Session ID ist erforderlich'
+      });
+    }
     
     // Find session by ID
     const session = await SessionModel.findById(sessionId);
@@ -93,16 +137,22 @@ const getTreatmentPlanBySessionId = async (req, res) => {
       });
     }
     
-    // Check if user has access to this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    // Check if user has permission to view treatment plan
+    if (req.user.role === 'DOCTOR') {
+      if (session.assignedToId !== req.user.id) {
+        return res.status(403).json({ 
+          message: 'Zugriff verweigert. Sie können keinen Behandlungsplan für eine Session einsehen, die nicht Ihnen zugewiesen ist.'
+        });
+      }
+    } else if (req.user.role === 'MEDIC') {
+      if (session.createdById !== req.user.id) {
+        return res.status(403).json({ 
+          message: 'Zugriff verweigert. Sie können keinen Behandlungsplan für eine Session einsehen, die nicht von Ihnen erstellt wurde.'
+        });
+      }
+    } else if (req.user.role !== 'ADMIN') {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
-      });
-    }
-    
-    if (req.user.role === 'MEDIC' && session.createdById !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Zugriff verweigert. Sie haben diese Session nicht erstellt.'
+        message: 'Zugriff verweigert. Nur Ärzte, Sanitäter und Administratoren können Behandlungspläne einsehen.'
       });
     }
     
@@ -110,6 +160,27 @@ const getTreatmentPlanBySessionId = async (req, res) => {
     const treatmentPlan = await TreatmentPlanModel.findBySessionId(sessionId);
     
     if (!treatmentPlan) {
+      // Auto-create a draft treatment plan if the session is assigned to a doctor
+      if ((req.user.role === 'DOCTOR' && session.assignedToId === req.user.id) || req.user.role === 'ADMIN') {
+        // Create a new draft treatment plan
+        const newTreatmentPlan = await TreatmentPlanModel.create({
+          sessionId,
+          doctorId: session.assignedToId || req.user.id,
+          diagnosis: '',
+          treatment: '',
+          medications: [],
+          notes: '',
+          status: 'DRAFT',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+
+        return res.status(200).json({
+          message: 'Neuer Behandlungsplan-Entwurf erstellt',
+          treatmentPlan: newTreatmentPlan
+        });
+      }
+
       return res.status(404).json({ 
         message: 'Behandlungsplan nicht gefunden'
       });
@@ -119,7 +190,7 @@ const getTreatmentPlanBySessionId = async (req, res) => {
       treatmentPlan
     });
   } catch (error) {
-    console.error('Get treatment plan error:', error);
+    console.error('Get treatment plan by session ID error:', error);
     res.status(500).json({ 
       message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
     });

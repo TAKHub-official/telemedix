@@ -7,26 +7,51 @@ const prisma = require('../config/prisma');
 class NotificationModel {
   /**
    * Create a new notification
-   * @param {string} userId - The ID of the recipient user
-   * @param {string} type - The notification type
-   * @param {string} title - The notification title
-   * @param {string} message - The notification message
+   * @param {Object|string} userIdOrData - Either the user ID or a notification data object
+   * @param {string} [type] - The notification type (optional if userIdOrData is an object)
+   * @param {string} [title] - The notification title (optional if userIdOrData is an object)
+   * @param {string} [message] - The notification message (optional if userIdOrData is an object)
    * @returns {Promise<Object>} The created notification
    */
-  static async create(userId, type, title, message) {
-    return prisma.notification.create({
-      data: {
-        userId,
-        type,
-        title,
-        message,
-        isRead: false,
-        createdAt: new Date()
-      },
-      include: {
-        user: true
+  static async create(userIdOrData, type, title, message) {
+    try {
+      // Handle the case where userIdOrData is an object with all notification data
+      if (typeof userIdOrData === 'object') {
+        const notificationData = userIdOrData;
+        return prisma.notification.create({
+          data: {
+            userId: notificationData.userId,
+            type: notificationData.type || 'GENERAL',
+            title: notificationData.title,
+            message: notificationData.message || notificationData.content,
+            read: notificationData.read !== undefined ? notificationData.read : false,
+            createdAt: new Date()
+          },
+          include: {
+            user: true
+          }
+        });
       }
-    });
+      
+      // Handle the case with individual parameters
+      const userId = userIdOrData;
+      return prisma.notification.create({
+        data: {
+          userId,
+          type,
+          title,
+          message,
+          read: false,
+          createdAt: new Date()
+        },
+        include: {
+          user: true
+        }
+      });
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      throw error;
+    }
   }
 
   /**
@@ -56,7 +81,24 @@ class NotificationModel {
   }
 
   /**
-   * Mark a notification as read
+   * Find unread notifications for a user
+   * @param {string} userId - The user ID
+   * @returns {Promise<Array>} List of unread notifications
+   */
+  static async findUnreadByUserId(userId) {
+    return prisma.notification.findMany({
+      where: { 
+        userId,
+        read: false
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  }
+
+  /**
+   * Mark notification as read
    * @param {string} id - The notification ID
    * @returns {Promise<Object>} The updated notification
    */
@@ -64,8 +106,8 @@ class NotificationModel {
     return prisma.notification.update({
       where: { id },
       data: {
-        isRead: true,
-        readAt: new Date()
+        read: true,
+        updatedAt: new Date()
       }
     });
   }
@@ -79,11 +121,11 @@ class NotificationModel {
     return prisma.notification.updateMany({
       where: { 
         userId,
-        isRead: false
+        read: false
       },
       data: {
-        isRead: true,
-        readAt: new Date()
+        read: true,
+        updatedAt: new Date()
       }
     });
   }
@@ -113,13 +155,13 @@ class NotificationModel {
   /**
    * Count unread notifications for a user
    * @param {string} userId - The user ID
-   * @returns {Promise<number>} The count of unread notifications
+   * @returns {Promise<number>} Number of unread notifications
    */
-  static async countUnread(userId) {
+  static async countUnreadByUserId(userId) {
     return prisma.notification.count({
-      where: {
+      where: { 
         userId,
-        isRead: false
+        read: false
       }
     });
   }

@@ -210,6 +210,51 @@ class SessionModel {
       }
     });
   }
+
+  /**
+   * Find all sessions for doctor dashboard (assigned to them OR open sessions)
+   * @param {string} doctorId - The doctor's user ID
+   * @param {Object} options - Filter and pagination options
+   * @returns {Promise<Array>} List of sessions
+   */
+  static async findAllForDoctor(doctorId, { 
+    status, 
+    priority, 
+    skip = 0, 
+    take = 20 
+  } = {}) {
+    const where = {
+      OR: [
+        { assignedToId: doctorId },
+        { status: 'OPEN', assignedToId: null }
+      ]
+    };
+    
+    // Add additional filters if provided
+    if (status && status !== 'OPEN') {
+      // If a specific status is requested (other than OPEN which is already in the OR condition)
+      where.status = status;
+      delete where.OR; // Remove the OR condition as it would conflict
+    }
+    
+    if (priority) {
+      where.priority = priority;
+    }
+    
+    return prisma.session.findMany({
+      where,
+      skip,
+      take,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        createdBy: true,
+        assignedTo: true,
+        medicalRecord: true
+      }
+    });
+  }
 }
 
 module.exports = SessionModel; 

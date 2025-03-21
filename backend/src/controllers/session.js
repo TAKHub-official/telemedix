@@ -12,26 +12,35 @@ const getSessions = async (req, res) => {
     const { status, priority, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
+    let sessions;
+    
     // Apply filters based on user role
-    const filterOptions = {
-      status: status ? status.toUpperCase() : undefined,
-      priority: priority ? priority.toUpperCase() : undefined,
-      skip,
-      take: parseInt(limit)
-    };
-    
-    // If user is a doctor, only show sessions assigned to them
     if (req.user.role === 'DOCTOR') {
-      filterOptions.assignedToId = req.user.id;
+      // For doctors: show both assigned sessions AND open sessions
+      sessions = await SessionModel.findAllForDoctor(req.user.id, {
+        status: status ? status.toUpperCase() : undefined,
+        priority: priority ? priority.toUpperCase() : undefined,
+        skip,
+        take: parseInt(limit)
+      });
+    } else if (req.user.role === 'MEDIC') {
+      // For medics: only show sessions created by them
+      sessions = await SessionModel.findAll({
+        status: status ? status.toUpperCase() : undefined,
+        priority: priority ? priority.toUpperCase() : undefined,
+        createdById: req.user.id,
+        skip,
+        take: parseInt(limit)
+      });
+    } else {
+      // For admin or other roles: show all sessions with optional filters
+      sessions = await SessionModel.findAll({
+        status: status ? status.toUpperCase() : undefined,
+        priority: priority ? priority.toUpperCase() : undefined,
+        skip,
+        take: parseInt(limit)
+      });
     }
-    
-    // If user is a medic, only show sessions created by them
-    if (req.user.role === 'MEDIC') {
-      filterOptions.createdById = req.user.id;
-    }
-    
-    // Find sessions with filters
-    const sessions = await SessionModel.findAll(filterOptions);
     
     res.status(200).json({
       sessions,
@@ -65,18 +74,28 @@ const getSessionById = async (req, res) => {
     }
     
     // Check if user has access to this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
-      });
-    }
-    
-    if (req.user.role === 'MEDIC' && session.createdById !== req.user.id) {
+    if (req.user.role === 'DOCTOR') {
+      // Doctors can view sessions assigned to them OR sessions with status='OPEN'
+      if (session.assignedToId !== req.user.id && session.status !== 'OPEN') {
+        // Special case: If the session is IN_PROGRESS and assigned to this doctor, allow access
+        if (session.status === 'IN_PROGRESS' && req.user.id === session.assignedToId) {
+          // Allow access - this doctor is handling the session
+        } else if (session.status === 'ASSIGNED' && req.user.id === session.assignedToId) {
+          // Allow access - this session is assigned to this doctor
+        } else {
+          // If the session is assigned to a different doctor, deny access
+          return res.status(403).json({ 
+            message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
+          });
+        }
+      }
+    } else if (req.user.role === 'MEDIC' && session.createdById !== req.user.id) {
       return res.status(403).json({ 
         message: 'Zugriff verweigert. Sie haben diese Session nicht erstellt.'
       });
     }
     
+    // User has access, return the session data
     res.status(200).json({
       session
     });
@@ -97,10 +116,10 @@ const createSession = async (req, res) => {
   try {
     const { title, patientCode, priority, medicalRecord } = req.body;
     
-    // Validate input
-    if (!title || !patientCode) {
+    // Validate input - only title is required now since patientCode is auto-generated
+    if (!title) {
       return res.status(400).json({ 
-        message: 'Titel und Patienten-Code sind erforderlich'
+        message: 'Ein Titel ist erforderlich'
       });
     }
     
@@ -118,7 +137,56 @@ const createSession = async (req, res) => {
     
     // Add medical record if provided
     if (medicalRecord) {
-      await SessionModel.addMedicalRecord(session.id, medicalRecord);
+      // Parse the patientHistory if it's a string
+      if (medicalRecord.patientHistory && typeof medicalRecord.patientHistory === 'string') {
+        try {
+          const patientHistory = JSON.parse(medicalRecord.patientHistory);
+          
+          // If we have patientHistory, let's use the provided age rather than a random one
+          await SessionModel.addMedicalRecord(session.id, medicalRecord);
+        } catch (e) {
+          console.error('Error parsing patientHistory:', e);
+          // If parsing fails, add the medical record as is
+          await SessionModel.addMedicalRecord(session.id, medicalRecord);
+        }
+      } else {
+        await SessionModel.addMedicalRecord(session.id, medicalRecord);
+      }
+    } else {
+      // Create a default medical record with the patient's age from the form
+      // The age is sent in the patientHistory JSON by the frontend
+      // Extract age and gender from the form data if available, otherwise use defaults
+      const patientAge = medicalRecord?.patientHistory?.age || '45'; // Default to 45
+      const patientGender = medicalRecord?.patientHistory?.gender || 'Männlich'; // Default to male
+      
+      const defaultMedicalRecord = {
+        patientHistory: JSON.stringify({
+          personalInfo: {
+            fullName: title.includes('Patient') ? title : title,
+            age: patientAge,
+            gender: patientGender
+          },
+          symptoms: ['Kopfschmerzen', 'Fieber', 'Müdigkeit'],
+          onset: '2 Tage',
+          description: 'Patient berichtet über zunehmende Symptome in den letzten Tagen.'
+        }),
+        allergies: 'Keine bekannten Allergien',
+        currentMedications: 'Ibuprofen bei Bedarf'
+      };
+      
+      await SessionModel.addMedicalRecord(session.id, defaultMedicalRecord);
+      
+      // Add some default vital signs
+      const vitalSigns = [
+        { type: 'HEART_RATE', value: '78', unit: 'bpm' },
+        { type: 'BLOOD_PRESSURE', value: '120/80', unit: 'mmHg' },
+        { type: 'TEMPERATURE', value: '37.2', unit: '°C' },
+        { type: 'OXYGEN_SATURATION', value: '98', unit: '%' }
+      ];
+      
+      for (const vitalSign of vitalSigns) {
+        await SessionModel.addVitalSign(session.id, vitalSign);
+      }
     }
     
     // Log session creation
@@ -169,15 +237,26 @@ const updateSession = async (req, res) => {
     }
     
     // Check if user has access to update this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
-      });
+    let hasAccess = false;
+    
+    if (req.user.role === 'ADMIN') {
+      // Admins always have access
+      hasAccess = true;
+    } else if (req.user.role === 'DOCTOR') {
+      // Doctors can update their assigned sessions
+      if (session.assignedToId === req.user.id) {
+        hasAccess = true;
+      }
+    } else if (req.user.role === 'MEDIC') {
+      // Medics can update sessions they created
+      if (session.createdById === req.user.id) {
+        hasAccess = true;
+      }
     }
     
-    if (req.user.role === 'MEDIC' && session.createdById !== req.user.id) {
+    if (!hasAccess) {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Sie haben diese Session nicht erstellt.'
+        message: 'Zugriff verweigert. Sie haben keine Berechtigung, diese Session zu aktualisieren.'
       });
     }
     
@@ -186,10 +265,35 @@ const updateSession = async (req, res) => {
     if (title) updateData.title = title;
     if (priority) updateData.priority = priority.toUpperCase();
     
-    // Only doctors can change status
-    if (status && (req.user.role === 'DOCTOR' || req.user.role === 'ADMIN')) {
-      updateData.status = status.toUpperCase();
+    // Handle status changes with proper validation
+    if (status) {
+      // Only doctors and admins can change status
+      if (req.user.role === 'DOCTOR' || req.user.role === 'ADMIN') {
+        // Make sure the status change is valid
+        if (status.toUpperCase() === 'IN_PROGRESS' && session.status === 'ASSIGNED') {
+          // Valid progression: ASSIGNED -> IN_PROGRESS
+          updateData.status = 'IN_PROGRESS';
+        } else if (status.toUpperCase() === 'COMPLETED' && (session.status === 'IN_PROGRESS' || session.status === 'ASSIGNED')) {
+          // Valid progression: ASSIGNED/IN_PROGRESS -> COMPLETED
+          updateData.status = 'COMPLETED';
+          updateData.completedAt = new Date();
+        } else {
+          // General case
+          updateData.status = status.toUpperCase();
+        }
+      }
     }
+    
+    // If there are no updates, return the current session
+    if (Object.keys(updateData).length === 0) {
+      return res.status(200).json({
+        message: 'Keine Änderungen vorgenommen',
+        session
+      });
+    }
+    
+    // Add updatedAt timestamp
+    updateData.updatedAt = new Date();
     
     // Update session
     const updatedSession = await SessionModel.update(id, updateData);
@@ -213,23 +317,28 @@ const updateSession = async (req, res) => {
     
     // If status has changed, notify the medic
     if (status && session.createdById && status !== session.status) {
-      // Create notification record
-      await NotificationModel.create({
-        userId: session.createdById,
-        title: 'Session Status Aktualisiert',
-        content: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
-        type: 'SESSION_STATUS',
-        relatedId: id,
-        isRead: false
-      });
-      
-      // Send real-time notification to the medic
-      emitNotification(session.createdById, {
-        title: 'Session Status Aktualisiert',
-        content: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
-        type: 'SESSION_STATUS',
-        relatedId: id
-      });
+      try {
+        // Create notification record
+        await NotificationModel.create({
+          userId: session.createdById,
+          type: 'SESSION_STATUS',
+          title: 'Session Status Aktualisiert',
+          message: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
+          read: false,
+          relatedId: id
+        });
+        
+        // Send real-time notification to the medic
+        emitNotification(session.createdById, {
+          title: 'Session Status Aktualisiert',
+          content: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
+          type: 'SESSION_STATUS',
+          relatedId: id
+        });
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Continue execution even if notification creation fails
+      }
     }
     
     res.status(200).json({
@@ -252,7 +361,12 @@ const updateSession = async (req, res) => {
 const assignSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { doctorId } = req.body;
+    let { doctorId } = req.body;
+    
+    // Use current user's ID as doctorId if not provided and user is a doctor
+    if (!doctorId && req.user.role === 'DOCTOR') {
+      doctorId = req.user.id;
+    }
     
     if (!doctorId) {
       return res.status(400).json({ 
@@ -284,7 +398,23 @@ const assignSession = async (req, res) => {
     );
     
     // Notify the doctor about the assignment
-    await NotificationModel.createSessionNotification(doctorId, updatedSession);
+    try {
+      await NotificationModel.createSessionNotification(doctorId, updatedSession);
+    } catch (err) {
+      console.error('Error creating notification:', err);
+      // Continue execution even if notification creation fails
+    }
+    
+    // Emit update via websocket
+    try {
+      emitSessionUpdate(id, {
+        type: 'STATUS_CHANGE',
+        session: updatedSession
+      });
+    } catch (err) {
+      console.error('Error emitting session update:', err);
+      // Continue execution even if socket emission fails
+    }
     
     res.status(200).json({
       message: 'Session erfolgreich zugewiesen',

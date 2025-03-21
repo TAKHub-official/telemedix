@@ -45,7 +45,15 @@ import {
   AccessTime as AccessTimeIcon,
   Error as ErrorIcon,
   Save as SaveIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Thermostat as ThermostatIcon,
+  MonitorHeart as MonitorHeartIcon,
+  Bloodtype as BloodtypeIcon,
+  Air as AirIcon,
+  Visibility as VisibilityIcon,
+  WaterDrop as WaterDropIcon,
+  Warning as WarningIcon,
+  Speed as SpeedIcon
 } from '@mui/icons-material';
 import { sessionsAPI, treatmentPlansAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -66,12 +74,34 @@ const SessionDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   
+  const [user, setUser] = useState(null);
+  
   // Fetch session data
   useEffect(() => {
-    if (id) {
-      loadSessionData();
-    }
-  }, [id]);
+    const loadData = async () => {
+      if (id) {
+        setLoading(true);
+        try {
+          const data = await sessionsAPI.getById(id);
+          if (data?.session) {
+            setSession(data.session);
+            
+            // Load treatment plan if this is a doctor viewing
+            if (user?.role === 'DOCTOR') {
+              loadTreatmentPlan();
+            }
+          }
+        } catch (err) {
+          console.error('Error loading session:', err);
+          setError('Fehler beim Laden der Session');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadData();
+  }, [id, user]);
   
   const loadSessionData = async () => {
     try {
@@ -81,7 +111,54 @@ const SessionDetail = () => {
       const sessionResponse = await sessionsAPI.getById(id);
       
       if (sessionResponse && sessionResponse.data) {
-        setSession(sessionResponse.data);
+        const sessionData = sessionResponse.data.session;
+        
+        // Safely handle medical record data without forcing JSON parsing
+        if (sessionData.medicalRecord) {
+          const medicalRecord = sessionData.medicalRecord;
+          
+          // Only try to parse if it looks like JSON (starts with { or [)
+          if (medicalRecord.patientHistory && typeof medicalRecord.patientHistory === 'string') {
+            const firstChar = medicalRecord.patientHistory.trim()[0];
+            if (firstChar === '{' || firstChar === '[') {
+              try {
+                medicalRecord.patientHistory = JSON.parse(medicalRecord.patientHistory);
+              } catch (e) {
+                console.log('Error parsing patient history, keeping as string');
+                // Keep as string if parsing fails
+              }
+            }
+          }
+          
+          // Same for current medications
+          if (medicalRecord.currentMedications && typeof medicalRecord.currentMedications === 'string') {
+            const firstChar = medicalRecord.currentMedications.trim()[0];
+            if (firstChar === '{' || firstChar === '[') {
+              try {
+                medicalRecord.currentMedications = JSON.parse(medicalRecord.currentMedications);
+              } catch (e) {
+                console.log('Error parsing current medications, keeping as string');
+                // Keep as string if parsing fails
+              }
+            }
+          }
+          
+          // Same for allergies
+          if (medicalRecord.allergies && typeof medicalRecord.allergies === 'string') {
+            const firstChar = medicalRecord.allergies.trim()[0];
+            if (firstChar === '{' || firstChar === '[') {
+              try {
+                medicalRecord.allergies = JSON.parse(medicalRecord.allergies);
+              } catch (e) {
+                console.log('Error parsing allergies, keeping as string');
+                // Keep as string if parsing fails
+              }
+            }
+          }
+        }
+        
+        console.log('Session data:', sessionData);
+        setSession(sessionData);
         
         // Try to load treatment plan for this session
         try {
@@ -338,123 +415,255 @@ const SessionDetail = () => {
     });
   };
   
-  const renderMockVitalsChart = () => {
-    // Mock data for vital signs
-    const mockHeartRateData = [
-      { time: '10:00', value: 75 },
-      { time: '10:15', value: 78 },
-      { time: '10:30', value: 80 },
-      { time: '10:45', value: 82 },
-      { time: '11:00', value: 79 },
-      { time: '11:15', value: 77 },
-      { time: '11:30', value: 75 },
-    ];
+  const formatVitalSignType = (type) => {
+    switch (type) {
+      case 'HEART_RATE':
+        return 'Herzfrequenz';
+      case 'BLOOD_PRESSURE':
+        return 'Blutdruck';
+      case 'OXYGEN_SATURATION':
+        return 'Sauerstoffsättigung';
+      case 'RESPIRATORY_RATE':
+        return 'Atemfrequenz';
+      case 'TEMPERATURE':
+        return 'Temperatur';
+      case 'BLOOD_GLUCOSE':
+        return 'Blutzucker';
+      case 'PAIN_LEVEL':
+        return 'Schmerzlevel';
+      case 'CONSCIOUSNESS':
+        return 'Bewusstsein';
+      default:
+        return type.replace(/_/g, ' ');
+    }
+  };
+  
+  const getVitalSignIcon = (type) => {
+    switch (type) {
+      case 'HEART_RATE':
+        return <MonitorHeartIcon color="error" />;
+      case 'BLOOD_PRESSURE':
+        return <SpeedIcon color="primary" />;
+      case 'OXYGEN_SATURATION':
+        return <WaterDropIcon color="info" />;
+      case 'RESPIRATORY_RATE':
+        return <AirIcon color="warning" />;
+      case 'TEMPERATURE':
+        return <ThermostatIcon color="secondary" />;
+      case 'BLOOD_GLUCOSE':
+        return <BloodtypeIcon color="success" />;
+      case 'PAIN_LEVEL':
+        return <WarningIcon color="error" />;
+      case 'CONSCIOUSNESS':
+        return <VisibilityIcon color="info" />;
+      default:
+        return <MedicalServicesIcon color="default" />;
+    }
+  };
+  
+  const renderVitalSignsChart = () => {
+    if (!session || !session.vitalSigns || session.vitalSigns.length === 0) {
+      return (
+        <Typography variant="body1">Keine Vitalwerte verfügbar</Typography>
+      );
+    }
+
+    // Group vital signs by type
+    const vitalSignsByType = {};
     
-    const mockBloodPressureData = [
-      { time: '10:00', systolic: 120, diastolic: 80 },
-      { time: '10:15', systolic: 122, diastolic: 82 },
-      { time: '10:30', systolic: 125, diastolic: 85 },
-      { time: '10:45', systolic: 128, diastolic: 87 },
-      { time: '11:00', systolic: 126, diastolic: 84 },
-      { time: '11:15', systolic: 124, diastolic: 82 },
-      { time: '11:30', systolic: 122, diastolic: 80 },
-    ];
+    // Sort vital signs by timestamp
+    const sortedVitalSigns = [...session.vitalSigns].sort((a, b) => 
+      new Date(a.timestamp || a.createdAt) - new Date(b.timestamp || b.createdAt)
+    );
     
-    const mockOxygenData = [
-      { time: '10:00', value: 98 },
-      { time: '10:15', value: 97 },
-      { time: '10:30', value: 97 },
-      { time: '10:45', value: 96 },
-      { time: '11:00', value: 96 },
-      { time: '11:15', value: 97 },
-      { time: '11:30', value: 98 },
-    ];
-    
+    // Group vital signs by type
+    sortedVitalSigns.forEach(sign => {
+      if (!vitalSignsByType[sign.type]) {
+        vitalSignsByType[sign.type] = [];
+      }
+      // Add formatted time for chart display
+      const date = new Date(sign.timestamp || sign.createdAt);
+      const formattedTime = date.toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      vitalSignsByType[sign.type].push({
+        ...sign,
+        time: formattedTime,
+        value: sign.value,
+        originalDate: sign.timestamp || sign.createdAt,
+      });
+    });
+
+    // Create chart components for each vital sign type that has 2+ values
     return (
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader title="Herzfrequenz" />
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={mockHeartRateData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis domain={[60, 100]} />
-                  <ChartTooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#8884d8"
-                    name="Puls (BPM)"
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader title="Blutdruck" />
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={mockBloodPressureData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis domain={[40, 180]} />
-                  <ChartTooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="systolic"
-                    stroke="#ff0000"
-                    name="Systolisch"
-                    activeDot={{ r: 8 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="diastolic"
-                    stroke="#0000ff"
-                    name="Diastolisch"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader title="Sauerstoffsättigung" />
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={mockOxygenData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis domain={[90, 100]} />
-                  <ChartTooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#82ca9d"
-                    name="SpO₂ (%)"
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
+        {Object.keys(vitalSignsByType).map(type => {
+          const signs = vitalSignsByType[type];
+          const chartTitle = formatVitalSignType(type);
+          
+          // Convert values to numbers if possible for charts
+          signs.forEach(sign => {
+            if (type === 'BLOOD_PRESSURE' && sign.value.includes('/')) {
+              const [systolic, diastolic] = sign.value.split('/');
+              sign.systolic = parseInt(systolic, 10);
+              sign.diastolic = parseInt(diastolic, 10);
+            } else {
+              // Try to parse as number, otherwise keep as is
+              const numValue = parseFloat(sign.value);
+              if (!isNaN(numValue)) {
+                sign.numValue = numValue;
+              }
+            }
+          });
+
+          // Special handling for blood pressure
+          if (type === 'BLOOD_PRESSURE') {
+            return (
+              <Grid item xs={12} md={6} key={type}>
+                <Card>
+                  <CardHeader title={chartTitle} />
+                  <CardContent>
+                    {signs.length >= 2 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={signs}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="time" />
+                          <YAxis domain={['dataMin - 10', 'dataMax + 10']} />
+                          <ChartTooltip formatter={(value, name) => [value, name]} />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="systolic"
+                            stroke="#ff0000"
+                            name="Systolisch"
+                            activeDot={{ r: 8 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="diastolic"
+                            stroke="#0000ff"
+                            name="Diastolisch"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Box sx={{ p: 2, textAlign: 'center' }}>
+                        <Typography variant="body1" gutterBottom>
+                          Nur ein Wert verfügbar - Zeige Wert: {signs[0].value} {signs[0].unit}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Weitere Werte werden als Graph angezeigt
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          } else {
+            // All other vital signs
+            return (
+              <Grid item xs={12} md={6} key={type}>
+                <Card>
+                  <CardHeader title={chartTitle} />
+                  <CardContent>
+                    {signs.length >= 2 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={signs}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="time" />
+                          <YAxis domain={['dataMin - 5', 'dataMax + 5']} />
+                          <ChartTooltip />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="numValue"
+                            stroke="#8884d8"
+                            name={`${chartTitle} (${signs[0].unit || ''})`}
+                            activeDot={{ r: 8 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Box sx={{ p: 2, textAlign: 'center' }}>
+                        <Typography variant="body1" gutterBottom>
+                          Nur ein Wert verfügbar - Zeige Wert: {signs[0].value} {signs[0].unit}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Weitere Werte werden als Graph angezeigt
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          }
+        })}
       </Grid>
     );
   };
   
   const renderPatientInfo = () => {
     if (!session) return null;
+    
+    // Parse patient history safely
+    let patientHistory = {};
+    try {
+      if (session.patientHistory) {
+        const history = safelyParseJSON(session.patientHistory, {});
+        if (typeof history === 'object') {
+          patientHistory = history;
+        } else {
+          patientHistory = { description: history };
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse patient history:', error);
+      patientHistory = { description: session.patientHistory || '' };
+    }
+    
+    console.log("Patient history data:", patientHistory);
+    
+    const personalInfo = patientHistory.personalInfo || {};
+    
+    // Safely get patient name from different possible sources
+    const patientName = personalInfo.fullName || session.title || 'Nicht angegeben';
+    
+    // Safely get patient age and gender
+    const patientAge = personalInfo.age || (session.patientCode ? parseInt(session.patientCode.split('-')[1]) : null) || 'Nicht angegeben';
+    const patientGender = personalInfo.gender || (patientHistory.gender || 'Nicht angegeben');
+    
+    // Extract symptoms - checking multiple possible locations
+    let symptoms = [];
+    if (Array.isArray(patientHistory.symptoms)) {
+      symptoms = patientHistory.symptoms;
+    } else if (patientHistory.mainSymptoms) {
+      symptoms = Array.isArray(patientHistory.mainSymptoms) ? patientHistory.mainSymptoms : [patientHistory.mainSymptoms];
+    } else if (session.symptoms) {
+      symptoms = Array.isArray(session.symptoms) ? session.symptoms : [session.symptoms];
+    }
+    
+    // Get latest vital signs for display
+    const latestVitalSigns = [];
+    const vitalSignTypes = new Set();
+    
+    if (session.vitalSigns && session.vitalSigns.length > 0) {
+      // Sort by timestamp descending to get the most recent first
+      const sortedVitalSigns = [...session.vitalSigns].sort((a, b) => 
+        new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt)
+      );
+      
+      // Get the most recent of each type
+      sortedVitalSigns.forEach(sign => {
+        if (!vitalSignTypes.has(sign.type)) {
+          vitalSignTypes.add(sign.type);
+          latestVitalSigns.push(sign);
+        }
+      });
+    }
     
     return (
       <Card sx={{ mb: 3 }}>
@@ -472,12 +681,17 @@ const SessionDetail = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={4}>
               <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-              <Typography variant="body1">{session.patientName || 'Nicht angegeben'}</Typography>
+              <Typography variant="body1">{patientName}</Typography>
             </Grid>
             
             <Grid item xs={12} sm={6} md={4}>
               <Typography variant="subtitle2" color="text.secondary">Alter</Typography>
-              <Typography variant="body1">{session.age ? `${session.age} Jahre` : 'Nicht angegeben'}</Typography>
+              <Typography variant="body1">{typeof patientAge === 'number' ? `${patientAge} Jahre` : patientAge}</Typography>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
+              <Typography variant="body1">{patientGender}</Typography>
             </Grid>
             
             <Grid item xs={12} sm={6} md={4}>
@@ -497,18 +711,186 @@ const SessionDetail = () => {
             
             <Grid item xs={12} sm={6} md={4}>
               <Typography variant="subtitle2" color="text.secondary">Medic</Typography>
-              <Typography variant="body1">{session.medic?.name || 'Nicht zugewiesen'}</Typography>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">Zugewiesen an</Typography>
-              <Typography variant="body1">{session.assignedTo || 'Nicht zugewiesen'}</Typography>
+              <Typography variant="body1">{session.createdBy?.firstName ? `${session.createdBy.firstName} ${session.createdBy.lastName}` : 'Nicht zugewiesen'}</Typography>
             </Grid>
             
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary">Symptome</Typography>
+              {symptoms.length > 0 ? (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                  {symptoms.map((symptom, index) => (
+                    <Chip key={index} label={symptom} size="small" color="primary" variant="outlined" />
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body1">Keine Symptome angegeben</Typography>
+              )}
+            </Grid>
+            
+            {/* Vital signs in patient info */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>Aktuelle Vitalwerte</Typography>
+              
+              {latestVitalSigns.length > 0 ? (
+                <Grid container spacing={1}>
+                  {latestVitalSigns.map((sign) => (
+                    <Grid item xs={12} sm={6} md={3} key={sign.id}>
+                      <Paper 
+                        sx={{ 
+                          p: 1.5, 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          bgcolor: 'background.default'
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          {getVitalSignIcon(sign.type)}
+                          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                            {formatVitalSignType(sign.type)}
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6">
+                          {sign.value} {sign.unit}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Typography variant="body1">Keine Vitalwerte verfügbar</Typography>
+              )}
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  const renderMedicalRecord = () => {
+    if (!session || !session.medicalRecord) {
+      return (
+        <Card sx={{ mb: 3 }}>
+          <CardHeader title="Medizinische Anamnese" />
+          <Divider />
+          <CardContent>
+            <Typography variant="body1">Keine Anamnese verfügbar</Typography>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    const { medicalRecord } = session;
+    let patientHistory = medicalRecord.patientHistory || {};
+    
+    // Handle string vs object conversion
+    if (typeof patientHistory === 'string') {
+      try {
+        // Make sure it's a non-empty string that looks like JSON
+        if (patientHistory.trim() && (patientHistory.trim().startsWith('{') || patientHistory.trim().startsWith('['))) {
+          patientHistory = JSON.parse(patientHistory);
+        } else {
+          console.log('Patient history is not valid JSON, using as plain text');
+          patientHistory = { description: patientHistory };
+        }
+      } catch (e) {
+        console.error('Failed to parse patient history:', e);
+        patientHistory = { description: patientHistory };
+      }
+    }
+    
+    const personalInfo = patientHistory.personalInfo || {};
+    
+    // Extract symptoms - checking multiple possible locations
+    let symptoms = [];
+    if (Array.isArray(patientHistory.symptoms)) {
+      symptoms = patientHistory.symptoms;
+    } else if (patientHistory.mainSymptoms) {
+      symptoms = Array.isArray(patientHistory.mainSymptoms) ? patientHistory.mainSymptoms : [patientHistory.mainSymptoms];
+    } else if (session.symptoms) {
+      symptoms = Array.isArray(session.symptoms) ? session.symptoms : [session.symptoms];
+    }
+    
+    return (
+      <Card sx={{ mb: 3 }}>
+        <CardHeader title="Medizinische Anamnese" />
+        <Divider />
+        <CardContent>
+          <Grid container spacing={3}>
+            {/* Personal Information */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Persönliche Informationen</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+                  <Typography variant="body1">
+                    {personalInfo.fullName || session.title || 'Nicht angegeben'}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Alter</Typography>
+                  <Typography variant="body1">
+                    {personalInfo.age ? `${personalInfo.age} Jahre` : (session.patientCode ? `${parseInt(session.patientCode.split('-')[1])} Jahre` : 'Nicht angegeben')}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
+                  <Typography variant="body1">
+                    {personalInfo.gender || patientHistory.gender || 'Nicht angegeben'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Grid>
+            
+            {/* Symptoms */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Symptome</Typography>
+              <Grid container spacing={1}>
+                {symptoms.length > 0 ? (
+                  symptoms.map((symptom, index) => (
+                    <Grid item key={index}>
+                      <Chip label={symptom} color="primary" variant="outlined" />
+                    </Grid>
+                  ))
+                ) : (
+                  <Grid item>
+                    <Typography variant="body1">Keine Symptome angegeben</Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Grid>
+            
+            {/* Onset */}
+            {patientHistory.onset && (
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>Beginn der Symptome</Typography>
+                <Typography variant="body1">{patientHistory.onset}</Typography>
+              </Grid>
+            )}
+            
+            {/* Description */}
+            {patientHistory.description && (
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>Beschreibung</Typography>
+                <Typography variant="body1">{patientHistory.description}</Typography>
+              </Grid>
+            )}
+            
+            {/* Current Medications */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Aktuelle Medikation</Typography>
               <Typography variant="body1">
-                {session.symptoms?.join(', ') || 'Keine Symptome angegeben'}
+                {medicalRecord.currentMedications || 'Keine Angaben'}
+              </Typography>
+            </Grid>
+            
+            {/* Allergies */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Allergien</Typography>
+              <Typography variant="body1">
+                {medicalRecord.allergies || 'Keine Allergien bekannt'}
               </Typography>
             </Grid>
           </Grid>
@@ -691,43 +1073,29 @@ const SessionDetail = () => {
       </Card>
     );
   };
-  
-  const renderVitalSigns = () => {
-    return (
-      <Box>
-        <Typography variant="h6" gutterBottom>Vitalwerte</Typography>
-        {renderMockVitalsChart()}
-      </Box>
-    );
-  };
 
   // Accept the session
   const handleAcceptSession = async () => {
-    if (!session) return;
-    
     try {
       setActionLoading(true);
       
-      // Update session status to IN_PROGRESS
-      await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+      // Assign session to current doctor
+      const result = await sessionsAPI.assign(id);
       
-      // Show success message
-      setSuccessMessage('Session erfolgreich angenommen');
-      
-      // Reload the session data to get updated status
-      await loadSessionData();
+      if (result) {
+        setSuccessMessage('Session erfolgreich übernommen');
+        
+        // Reload session data
+        await loadSessionData();
+        
+        // Load or create treatment plan
+        await loadTreatmentPlan();
+      }
     } catch (err) {
       console.error('Error accepting session:', err);
-      setError('Fehler beim Annehmen der Session. Bitte versuchen Sie es später erneut.');
+      setError('Fehler beim Übernehmen der Session');
     } finally {
       setActionLoading(false);
-      
-      // Clear success message after 3 seconds
-      if (successMessage) {
-        setTimeout(() => {
-          setSuccessMessage(null);
-        }, 3000);
-      }
     }
   };
 
@@ -738,25 +1106,86 @@ const SessionDetail = () => {
     try {
       setActionLoading(true);
       
-      // Update session status to COMPLETED
-      await sessionsAPI.update(id, { status: 'COMPLETED' });
+      // First make sure the session is in IN_PROGRESS status
+      if (session.status !== 'IN_PROGRESS') {
+        // Update to IN_PROGRESS first
+        await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+        
+        // Short delay to ensure the update is processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
-      // Show success message
-      setSuccessMessage('Session erfolgreich abgeschlossen');
-      
-      // Reload the session data to get updated status
-      await loadSessionData();
-    } catch (err) {
-      console.error('Error completing session:', err);
-      setError('Fehler beim Abschließen der Session. Bitte versuchen Sie es später erneut.');
+      // Now complete the session
+      const response = await sessionsAPI.update(id, { status: 'COMPLETED' });
+      if (response) {
+        setSuccessMessage('Die Session wurde erfolgreich abgeschlossen');
+        
+        // Reload session data after a short delay to ensure backend has updated
+        setTimeout(() => {
+          loadSessionData();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Error completing session:', error);
+      setError('Fehler beim Abschließen der Session');
     } finally {
       setActionLoading(false);
-      
-      // Clear success message after 3 seconds
-      if (successMessage) {
-        setTimeout(() => {
-          setSuccessMessage(null);
-        }, 3000);
+    }
+  };
+
+  // Safe parsing of JSON data
+  const safelyParseJSON = (jsonString, defaultValue = {}) => {
+    if (!jsonString) return defaultValue;
+    
+    // If it's already an object, return it
+    if (typeof jsonString === 'object') return jsonString;
+    
+    try {
+      // Check if the string looks like JSON
+      if (typeof jsonString === 'string' && 
+          (jsonString.startsWith('{') || jsonString.startsWith('['))) {
+        return JSON.parse(jsonString);
+      }
+      // Otherwise return the string as is
+      return jsonString;
+    } catch (error) {
+      console.error('Failed to parse JSON:', error);
+      return defaultValue;
+    }
+  };
+
+  // Add this after session data loading function
+  const loadTreatmentPlan = async () => {
+    if (!session?.id || user?.role !== 'DOCTOR') return;
+
+    try {
+      const response = await treatmentPlansAPI.getBySessionId(session.id);
+      if (response.treatmentPlan) {
+        setTreatmentPlan(response.treatmentPlan);
+      } else if (session.status !== 'OPEN' && session.assignedToId === user.id) {
+        // Create a new draft treatment plan if one doesn't exist
+        try {
+          const createResponse = await treatmentPlansAPI.create({
+            sessionId: session.id,
+            diagnosis: '',
+            treatment: '',
+            medications: [],
+            notes: '',
+            status: 'DRAFT'
+          });
+          
+          if (createResponse.treatmentPlan) {
+            setTreatmentPlan(createResponse.treatmentPlan);
+          }
+        } catch (createError) {
+          console.error('Error creating treatment plan:', createError);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading treatment plan:', error);
+      // Don't show error for 404s since we handle that case above
+      if (error.response?.status !== 404) {
+        setError('Fehler beim Laden des Behandlungsplans');
       }
     }
   };
@@ -865,8 +1294,13 @@ const SessionDetail = () => {
                     <Tab label="Behandlungsplan" />
                   </Tabs>
                   
-                  {tabValue === 0 && renderPatientInfo()}
-                  {tabValue === 1 && renderVitalSigns()}
+                  {tabValue === 0 && (
+                    <>
+                      {renderPatientInfo()}
+                      {renderMedicalRecord()}
+                    </>
+                  )}
+                  {tabValue === 1 && renderVitalSignsChart()}
                   {tabValue === 2 && renderTreatmentPlan()}
                 </Box>
               </Paper>
@@ -875,36 +1309,31 @@ const SessionDetail = () => {
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 3, mb: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Vitalwerte (aktuelle)
+                  Aktionen
                 </Typography>
                 <List>
-                  {session.vitalSigns && session.vitalSigns.length > 0 ? (
-                    session.vitalSigns
-                      .filter((sign, index, self) => {
-                        // Get the first occurrence of each vital sign type
-                        return index === self.findIndex(s => s.type === sign.type);
-                      })
-                      .map((sign) => (
-                        <ListItem key={sign.id} sx={{ py: 1 }}>
-                          <ListItemIcon>
-                            {sign.type === 'HEART_RATE' && <MedicalServicesIcon color="error" />}
-                            {sign.type === 'BLOOD_PRESSURE' && <MedicalServicesIcon color="primary" />}
-                            {sign.type === 'OXYGEN_SATURATION' && <MedicalServicesIcon color="info" />}
-                            {sign.type === 'RESPIRATORY_RATE' && <MedicalServicesIcon color="warning" />}
-                            {sign.type === 'TEMPERATURE' && <MedicalServicesIcon color="secondary" />}
-                            {sign.type === 'BLOOD_GLUCOSE' && <MedicalServicesIcon color="success" />}
-                            {sign.type === 'PAIN_LEVEL' && <MedicalServicesIcon color="error" />}
-                            {sign.type === 'CONSCIOUSNESS' && <MedicalServicesIcon color="info" />}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={`${sign.type.replace(/_/g, ' ')}`}
-                            secondary={`${sign.value} ${sign.unit}`}
-                          />
-                        </ListItem>
-                      ))
-                  ) : (
+                  <ListItem>
+                    <Button 
+                      variant="contained" 
+                      fullWidth 
+                      color="primary" 
+                      startIcon={<RefreshIcon />}
+                      onClick={handleRefresh}
+                    >
+                      Daten aktualisieren
+                    </Button>
+                  </ListItem>
+                  {session.status === 'ASSIGNED' && (
                     <ListItem>
-                      <ListItemText primary="Keine Vitalwerte verfügbar" />
+                      <Button 
+                        variant="contained" 
+                        fullWidth 
+                        color="success" 
+                        startIcon={<CheckCircleIcon />} 
+                        onClick={() => sessionsAPI.update(session.id, { status: 'IN_PROGRESS' }).then(handleRefresh)}
+                      >
+                        Session starten
+                      </Button>
                     </ListItem>
                   )}
                 </List>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
@@ -94,6 +94,12 @@ const BLOOD_GLUCOSE_OPTIONS = [
   ...Array.from({ length: 61 }, (_, i) => ({ value: String(40 + i * 10), label: `${40 + i * 10} mg/dL` }))
 ];
 
+// Generate age options from 1 to 120 years
+const AGE_OPTIONS = Array.from({ length: 120 }, (_, i) => ({ 
+  value: String(i + 1), 
+  label: `${i + 1} Jahre` 
+}));
+
 const NewSession = () => {
   const navigate = useNavigate();
   const { user } = useSelector(state => state.auth);
@@ -101,6 +107,32 @@ const NewSession = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [generatedPatientId, setGeneratedPatientId] = useState('');
+  
+  // Generate a unique patient ID on component mount
+  useEffect(() => {
+    generatePatientId();
+  }, []);
+  
+  // Generate a unique patient ID with format P[YY][MM][DD][###]
+  const generatePatientId = () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2); // Last 2 digits of year
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month (1-12) padded to 2 digits
+    const day = now.getDate().toString().padStart(2, '0'); // Day padded to 2 digits
+    
+    // Generate a random 3-digit number for the sequence
+    const sequence = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    
+    const patientId = `P${year}${month}${day}${sequence}`;
+    setGeneratedPatientId(patientId);
+    
+    // Update form data with the generated ID
+    setFormData(prev => ({
+      ...prev,
+      patientCode: patientId
+    }));
+  };
   
   // Form state
   const [formData, setFormData] = useState({
@@ -110,7 +142,7 @@ const NewSession = () => {
     priority: 'NORMAL',
     
     // Patient data
-    patientAge: '',
+    patientAge: '45', // Default age is now 45
     patientGender: 'MALE',
     
     // Vital signs - setze Standardwerte
@@ -174,8 +206,14 @@ const NewSession = () => {
         priority: formData.priority,
         medicalRecord: {
           patientHistory: JSON.stringify({
-            age: formData.patientAge,
-            gender: formData.patientGender,
+            personalInfo: {
+              fullName: formData.title || `Patient ${formData.patientCode}`,
+              age: formData.patientAge,
+              gender: formData.patientGender === 'MALE' ? 'Männlich' : 
+                     formData.patientGender === 'FEMALE' ? 'Weiblich' : 'Divers'
+            },
+            gender: formData.patientGender === 'MALE' ? 'Männlich' : 
+                    formData.patientGender === 'FEMALE' ? 'Weiblich' : 'Divers',
             chiefComplaint: formData.chiefComplaint,
             incidentDescription: formData.incidentDescription,
             pastMedicalHistory: formData.pastMedicalHistory
@@ -306,31 +344,55 @@ const NewSession = () => {
                   label="Patienten-Code"
                   name="patientCode"
                   value={formData.patientCode}
-                  onChange={handleChange}
+                  disabled={true} // Disable manual entry
                   margin="normal"
-                  placeholder="z.B. P12345"
-                  helperText="Eindeutiger Code zur Patienten-Identifikation"
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Alter"
-                  name="patientAge"
-                  value={formData.patientAge}
-                  onChange={handleChange}
-                  margin="normal"
-                  type="number"
-                  InputProps={{ inputProps: { min: 0, max: 120 } }}
+                  helperText="Automatisch generierter Patienten-Code"
                 />
               </Grid>
               
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth margin="normal">
-                  <InputLabel id="gender-select-label">Geschlecht</InputLabel>
+                  <InputLabel id="priority-label">Priorität</InputLabel>
                   <Select
-                    labelId="gender-select-label"
+                    labelId="priority-label"
+                    name="priority"
+                    value={formData.priority}
+                    onChange={handleChange}
+                    label="Priorität"
+                  >
+                    {PRIORITY_OPTIONS.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="patientAge-label">Alter des Patienten</InputLabel>
+                  <Select
+                    labelId="patientAge-label"
+                    name="patientAge"
+                    value={formData.patientAge}
+                    onChange={handleChange}
+                    label="Alter des Patienten"
+                  >
+                    {AGE_OPTIONS.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="patientGender-label">Geschlecht</InputLabel>
+                  <Select
+                    labelId="patientGender-label"
                     name="patientGender"
                     value={formData.patientGender}
                     onChange={handleChange}
@@ -344,45 +406,19 @@ const NewSession = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              
-              <Grid item xs={12}>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel id="priority-select-label">Priorität</InputLabel>
-                  <Select
-                    labelId="priority-select-label"
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleChange}
-                    label="Priorität"
-                  >
-                    {PRIORITY_OPTIONS.map(option => (
-                      <MenuItem 
-                        key={option.value} 
-                        value={option.value}
-                        sx={option.isNormal ? { fontWeight: 'bold' } : 
-                           option.isLow ? { color: 'error.main' } : 
-                           option.isHigh ? { color: 'warning.main' } : {}}
-                      >
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
             </Grid>
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button
                 variant="outlined"
                 onClick={handleCancel}
-                startIcon={<ArrowBackIcon />}
               >
                 Abbrechen
               </Button>
               <Button
                 variant="contained"
                 onClick={handleNext}
-                disabled={!formData.patientCode}
+                disabled={!formData.title} // Only title is required now
               >
                 Weiter
               </Button>

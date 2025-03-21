@@ -132,8 +132,18 @@ const Sessions = () => {
         severity: 'info'
       });
       
-      // Call API to update session status to IN_PROGRESS
-      await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+      // Get the current user ID from auth state
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const doctorId = currentUser?.id;
+      
+      if (!doctorId) {
+        throw new Error('Arzt-ID nicht gefunden');
+      }
+      
+      console.log('Assigning session to doctor ID:', doctorId);
+      
+      // Assign session to the current doctor using the assign API endpoint
+      await sessionsAPI.assign(id, doctorId);
       
       // Reload sessions after successful update
       await loadSessions();
