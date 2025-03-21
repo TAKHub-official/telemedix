@@ -26,30 +26,30 @@ class SessionModel {
    * @returns {Promise<Object>} The session if found
    */
   static async findById(id) {
-    return prisma.session.findUnique({
-      where: { id },
-      include: {
-        createdBy: true,
-        assignedTo: true,
-        medicalRecord: true,
-        treatmentPlan: {
-          include: {
-            steps: true
-          }
-        },
-        vitalSigns: {
-          orderBy: {
-            timestamp: 'desc'
-          }
-        },
-        notes: {
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        attachments: true
-      }
-    });
+    try {
+      return prisma.session.findUnique({
+        where: { id },
+        include: {
+          createdBy: true,
+          assignedTo: true,
+          medicalRecord: true,
+          vitalSigns: {
+            orderBy: {
+              timestamp: 'desc'
+            }
+          },
+          notes: {
+            orderBy: {
+              createdAt: 'desc'
+            }
+          },
+          attachments: true
+        }
+      });
+    } catch (error) {
+      console.error("Error finding session by ID:", error);
+      throw error;
+    }
   }
 
   /**

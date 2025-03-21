@@ -125,29 +125,37 @@ const Sessions = () => {
   
   const handleAcceptSession = async (id) => {
     try {
-      setLoading(true);
+      // Show loading notification
+      setNotification({
+        open: true,
+        message: 'Session wird akzeptiert...',
+        severity: 'info'
+      });
       
-      // Call API to assign session to current doctor
-      await sessionsAPI.assign(id);
+      // Call API to update session status to IN_PROGRESS
+      await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
       
-      // Refresh sessions
+      // Reload sessions after successful update
       await loadSessions();
       
       // Show success notification
       setNotification({
         open: true,
-        message: 'Session erfolgreich angenommen',
+        message: 'Session erfolgreich übernommen',
         severity: 'success'
       });
+      
+      // Navigate to session detail page
+      navigate(`/doctor/sessions/${id}`);
     } catch (err) {
       console.error('Error accepting session:', err);
+      
+      // Show error notification
       setNotification({
         open: true,
-        message: 'Fehler beim Annehmen der Session',
+        message: 'Fehler beim Übernehmen der Session. Bitte versuchen Sie es später erneut.',
         severity: 'error'
       });
-    } finally {
-      setLoading(false);
     }
   };
   
@@ -432,10 +440,11 @@ const Sessions = () => {
                       <TableRow 
                         key={session.id}
                         hover
-                        sx={{ 
-                          '&:hover': { 
-                            bgcolor: 'action.hover',
-                            cursor: 'pointer'
+                        sx={{
+                          cursor: 'pointer',
+                          backgroundColor: session.status === 'OPEN' ? 'rgba(255, 152, 0, 0.05)' : 'inherit',
+                          '&:hover': {
+                            backgroundColor: session.status === 'OPEN' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(0, 0, 0, 0.04)'
                           }
                         }}
                         onClick={() => handleViewSession(session.id)}
@@ -472,36 +481,33 @@ const Sessions = () => {
                         <TableCell>
                           {session.medic?.name || 'Nicht zugewiesen'}
                         </TableCell>
-                        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                          <Box>
-                            <Tooltip title="Details anzeigen">
-                              <IconButton
+                        <TableCell padding="none">
+                          <Box sx={{ display: 'flex' }}>
+                            <Tooltip title="Session anzeigen">
+                              <IconButton 
+                                size="small"
                                 color="primary"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleViewSession(session.id);
                                 }}
-                                size="small"
                               >
-                                <VisibilityIcon />
+                                <VisibilityIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             
-                            {session.status === 'PENDING' && (
+                            {session.status === 'OPEN' && (
                               <Tooltip title="Session annehmen">
-                                <Button
-                                  variant="outlined"
-                                  color="success"
+                                <IconButton 
                                   size="small"
-                                  startIcon={<CheckCircleIcon />}
+                                  color="success"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAcceptSession(session.id);
                                   }}
-                                  sx={{ ml: 1 }}
                                 >
-                                  Annehmen
-                                </Button>
+                                  <CheckCircleIcon fontSize="small" />
+                                </IconButton>
                               </Tooltip>
                             )}
                           </Box>

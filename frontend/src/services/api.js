@@ -96,9 +96,23 @@ const sessionsAPI = {
   addNote: (id, content) => api.post(`/sessions/${id}/notes`, { content }),
 };
 
+// Treatment Plans API
+const treatmentPlansAPI = {
+  getBySessionId: (sessionId) => api.get(`/treatment-plans/sessions/${sessionId}`),
+  create: (sessionId, data) => api.post(`/treatment-plans/sessions/${sessionId}`, data),
+  update: (planId, data) => api.put(`/treatment-plans/${planId}`, data),
+  delete: (planId) => api.delete(`/treatment-plans/${planId}`),
+  
+  // Treatment Steps
+  addStep: (planId, description) => api.post(`/treatment-plans/${planId}/steps`, { description }),
+  updateStep: (stepId, data) => api.put(`/treatment-plans/steps/${stepId}`, data),
+  deleteStep: (stepId) => api.delete(`/treatment-plans/steps/${stepId}`),
+};
+
 export {
   api,
   authAPI,
   usersAPI,
   sessionsAPI,
+  treatmentPlansAPI,
 }; 

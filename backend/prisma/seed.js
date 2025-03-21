@@ -26,13 +26,13 @@ async function main() {
     // Create doctor user
     const doctorPassword = await bcrypt.hash('doctor123', 10);
     const doctor = await prisma.user.upsert({
-      where: { email: 'dr.mueller@telemedix.com' },
+      where: { email: 'doctor@telemedix.com' },
       update: {},
       create: {
-        email: 'dr.mueller@telemedix.com',
+        email: 'doctor@telemedix.com',
         password: doctorPassword,
-        firstName: 'Dr. Thomas',
-        lastName: 'Müller',
+        firstName: 'Doctor',
+        lastName: 'User',
         role: 'DOCTOR',
         status: 'ACTIVE',
       },
@@ -42,13 +42,13 @@ async function main() {
     // Create medic user
     const medicPassword = await bcrypt.hash('medic123', 10);
     const medic = await prisma.user.upsert({
-      where: { email: 'medic.wagner@telemedix.com' },
+      where: { email: 'medic@telemedix.com' },
       update: {},
       create: {
-        email: 'medic.wagner@telemedix.com',
+        email: 'medic@telemedix.com',
         password: medicPassword,
-        firstName: 'Lukas',
-        lastName: 'Wagner',
+        firstName: 'Medic',
+        lastName: 'User',
         role: 'MEDIC',
         status: 'ACTIVE',
       },
@@ -118,12 +118,12 @@ async function main() {
     
     console.log('Another active session created:', session2.id);
 
-    // 3. Pending session
+    // 3. Open session (changed from PENDING to OPEN)
     const session3 = await prisma.session.create({
       data: {
         title: 'Routineuntersuchung',
         patientCode: 'PAT-003',
-        status: 'PENDING',
+        status: 'OPEN',
         priority: 'LOW',
         createdById: medic.id
       }
@@ -138,7 +138,7 @@ async function main() {
       }
     });
     
-    console.log('Pending session created:', session3.id);
+    console.log('Open session created:', session3.id);
 
     // 4. Completed session
     const session4 = await prisma.session.create({
@@ -189,4 +189,4 @@ async function main() {
   }
 }
 
-main(); 
+main();

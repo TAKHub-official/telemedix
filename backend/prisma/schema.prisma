@@ -68,9 +68,11 @@ model TreatmentPlan {
   sessionId       String      @unique
   session         Session     @relation(fields: [sessionId], references: [id])
   diagnosis       String?
+  status          String      @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
   steps           TreatmentStep[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  completedAt     DateTime?
 }
 
 // Treatment Step model - represents a step in a treatment plan

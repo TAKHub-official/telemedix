@@ -1,5 +1,6 @@
 // Session controller
 const { SessionModel, NotificationModel, AuditLogModel } = require('../models');
+const { emitSessionUpdate, emitNotification } = require('../index');
 
 /**
  * Get all sessions with optional filtering
@@ -204,6 +205,33 @@ const updateSession = async (req, res) => {
       ipAddress
     );
     
+    // Emit session update via socket.io
+    emitSessionUpdate(id, {
+      type: 'STATUS_CHANGE',
+      session: updatedSession
+    });
+    
+    // If status has changed, notify the medic
+    if (status && session.createdById && status !== session.status) {
+      // Create notification record
+      await NotificationModel.create({
+        userId: session.createdById,
+        title: 'Session Status Aktualisiert',
+        content: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
+        type: 'SESSION_STATUS',
+        relatedId: id,
+        isRead: false
+      });
+      
+      // Send real-time notification to the medic
+      emitNotification(session.createdById, {
+        title: 'Session Status Aktualisiert',
+        content: `Die Session "${updatedSession.title}" wurde auf "${status.toUpperCase()}" gesetzt.`,
+        type: 'SESSION_STATUS',
+        relatedId: id
+      });
+    }
+    
     res.status(200).json({
       message: 'Session erfolgreich aktualisiert',
       session: updatedSession
@@ -312,7 +340,7 @@ const addVitalSign = async (req, res) => {
     // Add vital sign
     const vitalSign = await SessionModel.addVitalSign(id, {
       type: type.toUpperCase(),
-      value: parseFloat(value),
+      value: String(value), // Ensure value is a string for Prisma
       unit
     });
     

@@ -18,6 +18,20 @@ services:
       - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-password}@db:5432/telemedix
     depends_on:
       - db
+    networks:
+      - telemedix-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    # WICHTIG: Für Produktionsumgebungen diesen command-Block entfernen oder auskommentieren!
+    # Dieser Teil ist nur für die Entwicklung gedacht, um die Datenbank automatisch zu initialisieren
+    command: >
+      sh -c "
+        sleep 5 &&
+        npx prisma db push --force-reset &&
+        npx prisma db seed &&
+        npm start
+      "
 
   # Frontend web service
   frontend:
@@ -29,6 +43,11 @@ services:
       - backend
     environment:
       - VITE_API_URL=http://localhost:3000/api
+    networks:
+      - telemedix-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
   # Database service
   db:
@@ -41,7 +60,14 @@ services:
       - POSTGRES_DB=telemedix
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - telemedix-network
 
 # Volume for database persistence
 volumes:
-  postgres_data: 
+  postgres_data:
+
+# Network for container communication
+networks:
+  telemedix-network:
+    driver: bridge 

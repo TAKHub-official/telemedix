@@ -9,6 +9,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/sessions');
 const userRoutes = require('./routes/users');
+const treatmentPlanRoutes = require('./routes/treatmentPlans');
 // const treatmentRoutes = require('./routes/treatments'); // We'll add this later
 
 // Express app setup
@@ -32,6 +33,7 @@ app.use(morgan('dev'));
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/treatment-plans', treatmentPlanRoutes);
 // app.use('/api/treatments', treatmentRoutes); // We'll add this later
 
 // Health check endpoint

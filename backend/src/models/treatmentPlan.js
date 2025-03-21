@@ -12,7 +12,7 @@ class TreatmentPlanModel {
    */
   static async create(planData) {
     // Extract steps from the plan data if they exist
-    const { steps, ...planInfo } = planData;
+    const { steps, authorId, ...planInfo } = planData;
     
     // Create the treatment plan with steps if provided
     if (steps && Array.isArray(steps) && steps.length > 0) {
@@ -20,18 +20,16 @@ class TreatmentPlanModel {
         data: {
           ...planInfo,
           steps: {
-            create: steps.map((step, index) => ({
-              ...step,
-              order: index + 1
+            create: steps.map(step => ({
+              ...step
             }))
           }
         },
         include: {
-          author: true,
           session: true,
           steps: {
             orderBy: {
-              order: 'asc'
+              createdAt: 'asc'
             }
           }
         }
@@ -42,7 +40,6 @@ class TreatmentPlanModel {
     return prisma.treatmentPlan.create({
       data: planInfo,
       include: {
-        author: true,
         session: true
       }
     });
@@ -54,18 +51,22 @@ class TreatmentPlanModel {
    * @returns {Promise<Object>} The treatment plan if found
    */
   static async findById(id) {
-    return prisma.treatmentPlan.findUnique({
-      where: { id },
-      include: {
-        author: true,
-        session: true,
-        steps: {
-          orderBy: {
-            order: 'asc'
+    try {
+      return prisma.treatmentPlan.findUnique({
+        where: { id },
+        include: {
+          session: true,
+          steps: {
+            orderBy: {
+              createdAt: 'asc'
+            }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Error finding treatment plan by ID:", error);
+      throw error;
+    }
   }
 
   /**
@@ -74,18 +75,22 @@ class TreatmentPlanModel {
    * @returns {Promise<Object>} The treatment plan if found
    */
   static async findBySessionId(sessionId) {
-    return prisma.treatmentPlan.findUnique({
-      where: { sessionId },
-      include: {
-        author: true,
-        session: true,
-        steps: {
-          orderBy: {
-            order: 'asc'
+    try {
+      return prisma.treatmentPlan.findUnique({
+        where: { sessionId },
+        include: {
+          session: true,
+          steps: {
+            orderBy: {
+              createdAt: 'asc'
+            }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Error finding treatment plan by session ID:", error);
+      throw error;
+    }
   }
 
   /**
@@ -102,11 +107,10 @@ class TreatmentPlanModel {
       where: { id },
       data: planInfo,
       include: {
-        author: true,
         session: true,
         steps: {
           orderBy: {
-            order: 'asc'
+            createdAt: 'asc'
           }
         }
       }
@@ -131,18 +135,9 @@ class TreatmentPlanModel {
    * @returns {Promise<Object>} The created step
    */
   static async addStep(planId, stepData) {
-    // Get the current highest order
-    const highestOrderStep = await prisma.treatmentStep.findFirst({
-      where: { treatmentPlanId: planId },
-      orderBy: { order: 'desc' }
-    });
-    
-    const order = highestOrderStep ? highestOrderStep.order + 1 : 1;
-    
     return prisma.treatmentStep.create({
       data: {
         ...stepData,
-        order,
         treatmentPlan: {
           connect: { id: planId }
         }
@@ -192,11 +187,10 @@ class TreatmentPlanModel {
       where: { id },
       data,
       include: {
-        author: true,
         session: true,
         steps: {
           orderBy: {
-            order: 'asc'
+            createdAt: 'asc'
           }
         }
       }

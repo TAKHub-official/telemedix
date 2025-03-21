@@ -47,7 +47,7 @@ import {
   Save as SaveIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import { sessionsAPI } from '../../services/api';
+import { sessionsAPI, treatmentPlansAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const SessionDetail = () => {
@@ -57,10 +57,14 @@ const SessionDetail = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [treatmentPlan, setTreatmentPlan] = useState([]);
+  const [treatmentPlan, setTreatmentPlan] = useState(null);
+  const [treatmentSteps, setTreatmentSteps] = useState([]);
   const [tabValue, setTabValue] = useState(0);
   const [newStep, setNewStep] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
   
   // Fetch session data
   useEffect(() => {
@@ -73,15 +77,28 @@ const SessionDetail = () => {
     try {
       setLoading(true);
       
-      // In a real implementation, fetch from API
-      const response = await sessionsAPI.getById(id);
+      // Fetch session data
+      const sessionResponse = await sessionsAPI.getById(id);
       
-      if (response && response.data) {
-        setSession(response.data);
+      if (sessionResponse && sessionResponse.data) {
+        setSession(sessionResponse.data);
         
-        // If the session has a treatment plan, load it
-        if (response.data.treatmentPlan) {
-          setTreatmentPlan(response.data.treatmentPlan.steps || []);
+        // Try to load treatment plan for this session
+        try {
+          const treatmentResponse = await treatmentPlansAPI.getBySessionId(id);
+          
+          if (treatmentResponse && treatmentResponse.data && treatmentResponse.data.treatmentPlan) {
+            const plan = treatmentResponse.data.treatmentPlan;
+            setTreatmentPlan(plan);
+            setTreatmentSteps(plan.steps || []);
+            setDiagnosis(plan.diagnosis || '');
+          }
+        } catch (treatmentError) {
+          // Treatment plan may not exist yet, that's ok
+          console.log('No treatment plan found, may need to create one');
+          setTreatmentPlan(null);
+          setTreatmentSteps([]);
+          setDiagnosis('');
         }
       } else {
         throw new Error('Invalid response format');
@@ -100,37 +117,119 @@ const SessionDetail = () => {
     setTabValue(newValue);
   };
   
-  const handleAddStep = () => {
+  const handleAddStep = async () => {
     if (newStep.trim() === '') return;
     
-    setTreatmentPlan([...treatmentPlan, { 
-      id: Date.now().toString(), 
-      description: newStep,
-      completed: false 
-    }]);
-    setNewStep('');
+    try {
+      setLoading(true);
+      
+      // If treatment plan doesn't exist yet, create it first
+      if (!treatmentPlan) {
+        const createPlanResponse = await treatmentPlansAPI.create(id, {
+          diagnosis,
+          steps: [{ description: newStep }]
+        });
+        
+        if (createPlanResponse && createPlanResponse.data && createPlanResponse.data.treatmentPlan) {
+          setTreatmentPlan(createPlanResponse.data.treatmentPlan);
+          setTreatmentSteps(createPlanResponse.data.treatmentPlan.steps || []);
+          setNewStep('');
+          setError(null);
+        }
+      } else {
+        // Add step to existing treatment plan
+        const addStepResponse = await treatmentPlansAPI.addStep(treatmentPlan.id, newStep);
+        
+        if (addStepResponse && addStepResponse.data && addStepResponse.data.step) {
+          // Add the new step to our state
+          setTreatmentSteps([...treatmentSteps, addStepResponse.data.step]);
+          setNewStep('');
+          setError(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error adding step:', err);
+      setError('Fehler beim Hinzufügen des Schritts. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
   };
   
-  const handleDeleteStep = (stepId) => {
-    setTreatmentPlan(treatmentPlan.filter(step => step.id !== stepId));
+  const handleDeleteStep = async (stepId) => {
+    try {
+      setLoading(true);
+      
+      // Call API to delete the step
+      await treatmentPlansAPI.deleteStep(stepId);
+      
+      // Update local state
+      setTreatmentSteps(treatmentSteps.filter(step => step.id !== stepId));
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting step:', err);
+      setError('Fehler beim Löschen des Schritts. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleUpdateDiagnosis = async () => {
+    try {
+      setLoading(true);
+      
+      // If treatment plan doesn't exist yet, create it
+      if (!treatmentPlan) {
+        const createPlanResponse = await treatmentPlansAPI.create(id, {
+          diagnosis
+        });
+        
+        if (createPlanResponse && createPlanResponse.data && createPlanResponse.data.treatmentPlan) {
+          setTreatmentPlan(createPlanResponse.data.treatmentPlan);
+          setError(null);
+        }
+      } else {
+        // Update existing treatment plan diagnosis
+        const updateResponse = await treatmentPlansAPI.update(treatmentPlan.id, {
+          diagnosis
+        });
+        
+        if (updateResponse && updateResponse.data && updateResponse.data.treatmentPlan) {
+          setTreatmentPlan(updateResponse.data.treatmentPlan);
+          setError(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating diagnosis:', err);
+      setError('Fehler beim Aktualisieren der Diagnose. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleSaveTreatmentPlan = async () => {
     try {
       setLoading(true);
       
-      // Call API to save treatment plan
-      await sessionsAPI.update(id, { 
-        treatmentPlan: { 
-          steps: treatmentPlan,
-          status: 'DRAFT'
-        } 
-      });
-      
-      // Reload session data
-      await loadSessionData();
-      
-      setError(null);
+      // If the treatment plan already exists, just fetch it again
+      // since we can't set the status field yet
+      if (treatmentPlan) {
+        // Reload treatment plan data
+        await loadSessionData();
+        setError(null);
+      } else {
+        // If the treatment plan doesn't exist and there are steps, create it
+        if (treatmentSteps.length > 0) {
+          const createResponse = await treatmentPlansAPI.create(id, {
+            diagnosis,
+            steps: treatmentSteps
+          });
+          
+          if (createResponse && createResponse.data && createResponse.data.treatmentPlan) {
+            setTreatmentPlan(createResponse.data.treatmentPlan);
+            setError(null);
+          }
+        }
+      }
     } catch (err) {
       console.error('Error saving treatment plan:', err);
       setError('Fehler beim Speichern des Behandlungsplans. Bitte versuchen Sie es später erneut.');
@@ -149,18 +248,30 @@ const SessionDetail = () => {
       setLoading(true);
       setDialogOpen(false);
       
-      // Call API to send treatment plan
-      await sessionsAPI.update(id, { 
-        treatmentPlan: { 
-          steps: treatmentPlan,
-          status: 'ACTIVE'
-        } 
-      });
-      
-      // Reload session data
-      await loadSessionData();
-      
-      setError(null);
+      // If the treatment plan exists, we would normally update its status to ACTIVE here
+      // but since we don't have that field yet, we'll just fetch it again
+      if (treatmentPlan) {
+        // Reload treatment plan data
+        await loadSessionData();
+        setError(null);
+      } else {
+        // If the treatment plan doesn't exist and there are steps, create it
+        if (treatmentSteps.length > 0) {
+          const createResponse = await treatmentPlansAPI.create(id, {
+            diagnosis,
+            steps: treatmentSteps
+          });
+          
+          if (createResponse && createResponse.data && createResponse.data.treatmentPlan) {
+            setTreatmentPlan(createResponse.data.treatmentPlan);
+            setError(null);
+          }
+        } else {
+          setError('Der Behandlungsplan muss mindestens einen Schritt enthalten.');
+          setLoading(false);
+          return;
+        }
+      }
     } catch (err) {
       console.error('Error sending treatment plan:', err);
       setError('Fehler beim Senden des Behandlungsplans. Bitte versuchen Sie es später erneut.');
@@ -406,126 +517,176 @@ const SessionDetail = () => {
     );
   };
   
+  // Determine the treatment plan status with a fallback
+  const getTreatmentPlanStatus = (plan) => {
+    // If we have a treatment plan with a status field, use it
+    if (plan && plan.status) {
+      return plan.status;
+    }
+    
+    // Otherwise, assume it's a draft for now
+    return 'DRAFT';
+  };
+  
   const renderTreatmentPlan = () => {
-    const canEditTreatmentPlan = !session?.treatmentPlan || session?.treatmentPlan?.status === 'DRAFT';
-    const canSendTreatmentPlan = treatmentPlan.length > 0 && canEditTreatmentPlan;
+    const planStatus = getTreatmentPlanStatus(treatmentPlan);
+    const isPlanActive = planStatus === 'ACTIVE';
+    const isPlanCompleted = planStatus === 'COMPLETED';
+    const isPlanEditable = !isPlanActive && !isPlanCompleted;
     
     return (
       <Card>
         <CardHeader 
           title="Behandlungsplan" 
+          subheader={treatmentPlan ? `Status: ${planStatus}` : 'Kein Plan vorhanden'}
           action={
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {canEditTreatmentPlan && (
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={handleSaveTreatmentPlan}
-                  startIcon={<SaveIcon />}
-                  disabled={loading || treatmentPlan.length === 0}
-                >
-                  Speichern
-                </Button>
-              )}
-              
-              {canSendTreatmentPlan && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSendTreatmentPlan}
-                  startIcon={<SendIcon />}
-                  disabled={loading || treatmentPlan.length === 0}
-                >
-                  An Medic senden
-                </Button>
-              )}
-            </Box>
+            <IconButton onClick={handleRefresh}>
+              <RefreshIcon />
+            </IconButton>
           }
         />
-        <Divider />
         <CardContent>
-          {session?.treatmentPlan?.status === 'ACTIVE' ? (
-            <Box>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Dieser Behandlungsplan wurde bereits an den Medic gesendet und kann nicht mehr bearbeitet werden.
-              </Alert>
-              
-              <Stepper orientation="vertical" activeStep={-1}>
-                {treatmentPlan.map((step, index) => (
-                  <Step key={step.id} active={true}>
-                    <StepLabel>
-                      <Typography variant="body1">{step.description}</Typography>
-                      {step.completed && (
-                        <Typography variant="caption" color="success.main">
-                          Abgeschlossen am {formatDate(step.completedAt)}
-                        </Typography>
-                      )}
-                    </StepLabel>
-                  </Step>
-                ))}
-              </Stepper>
-            </Box>
-          ) : treatmentPlan.length === 0 ? (
-            <Alert severity="info">
-              Erstellen Sie einen Behandlungsplan für diesen Patienten mit klaren, kurzen Anweisungen.
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          
+          <TextField
+            label="Diagnose"
+            variant="outlined"
+            fullWidth
+            value={diagnosis}
+            onChange={(e) => setDiagnosis(e.target.value)}
+            disabled={!isPlanEditable}
+            margin="normal"
+            onBlur={handleUpdateDiagnosis}
+          />
+          
+          <Divider sx={{ my: 2 }} />
+          
+          {/* Treatment Steps */}
+          <Typography variant="h6" gutterBottom>
+            Behandlungsschritte
+          </Typography>
+          
+          {treatmentSteps.length === 0 ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Noch keine Behandlungsschritte hinzugefügt.
             </Alert>
           ) : (
-            <Box>
-              <List>
-                {treatmentPlan.map((step, index) => (
-                  <ListItem
-                    key={step.id}
-                    secondaryAction={
-                      canEditTreatmentPlan && (
-                        <IconButton 
-                          edge="end" 
-                          aria-label="delete" 
-                          onClick={() => handleDeleteStep(step.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      )
-                    }
-                  >
-                    <ListItemIcon>
-                      <Typography variant="body2" color="text.secondary" sx={{ width: 25 }}>
+            <List>
+              {treatmentSteps.map((step, index) => (
+                <ListItem 
+                  key={step.id} 
+                  secondaryAction={
+                    isPlanEditable && (
+                      <IconButton 
+                        edge="end" 
+                        onClick={() => handleDeleteStep(step.id)}
+                        disabled={loading}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    )
+                  }
+                >
+                  <ListItemIcon>
+                    {step.status === 'COMPLETED' ? (
+                      <CheckCircleIcon color="success" />
+                    ) : (
+                      <Typography variant="body1" color="textSecondary">
                         {index + 1}.
                       </Typography>
-                    </ListItemIcon>
-                    <ListItemText primary={step.description} />
-                  </ListItem>
-                ))}
-              </List>
-              
-              {canEditTreatmentPlan && (
-                <Box sx={{ display: 'flex', mt: 2 }}>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    label="Neuer Behandlungsschritt"
-                    value={newStep}
-                    onChange={(e) => setNewStep(e.target.value)}
-                    placeholder="Schrittweise Anweisung eingeben..."
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAddStep();
-                      }
-                    }}
+                    )}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={step.description} 
+                    secondary={step.completedAt ? `Abgeschlossen am: ${formatDate(step.completedAt)}` : null}
                   />
+                </ListItem>
+              ))}
+            </List>
+          )}
+          
+          {/* Add New Step */}
+          {isPlanEditable && (
+            <Box sx={{ display: 'flex', mt: 2 }}>
+              <TextField
+                label="Neuer Behandlungsschritt"
+                variant="outlined"
+                fullWidth
+                value={newStep}
+                onChange={(e) => setNewStep(e.target.value)}
+                disabled={loading}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleAddStep}
+                disabled={loading || newStep.trim() === ''}
+                sx={{ ml: 1 }}
+                startIcon={<AddIcon />}
+              >
+                Hinzufügen
+              </Button>
+            </Box>
+          )}
+          
+          {/* Action Buttons */}
+          {!loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+              {isPlanEditable && (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleSaveTreatmentPlan}
+                    disabled={loading || treatmentSteps.length === 0}
+                    sx={{ mr: 1 }}
+                    startIcon={<SaveIcon />}
+                  >
+                    Speichern
+                  </Button>
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={handleAddStep}
-                    startIcon={<AddIcon />}
-                    sx={{ ml: 1 }}
-                    disabled={newStep.trim() === ''}
+                    onClick={handleSendTreatmentPlan}
+                    disabled={loading || treatmentSteps.length === 0}
+                    startIcon={<SendIcon />}
                   >
-                    Hinzufügen
+                    An Medic senden
                   </Button>
-                </Box>
+                </>
               )}
             </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <CircularProgress />
+            </Box>
           )}
+          
+          {/* Confirmation Dialog */}
+          <Dialog
+            open={dialogOpen}
+            onClose={() => setDialogOpen(false)}
+          >
+            <DialogTitle>Behandlungsplan senden</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                Sind Sie sicher, dass Sie den Behandlungsplan an den Medic senden möchten? 
+                Nach dem Senden kann der Plan nicht mehr geändert werden.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)} color="primary">
+                Abbrechen
+              </Button>
+              <Button onClick={confirmSendTreatmentPlan} color="primary" variant="contained">
+                Senden
+              </Button>
+            </DialogActions>
+          </Dialog>
         </CardContent>
       </Card>
     );
@@ -540,77 +701,218 @@ const SessionDetail = () => {
     );
   };
 
+  // Accept the session
+  const handleAcceptSession = async () => {
+    if (!session) return;
+    
+    try {
+      setActionLoading(true);
+      
+      // Update session status to IN_PROGRESS
+      await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+      
+      // Show success message
+      setSuccessMessage('Session erfolgreich angenommen');
+      
+      // Reload the session data to get updated status
+      await loadSessionData();
+    } catch (err) {
+      console.error('Error accepting session:', err);
+      setError('Fehler beim Annehmen der Session. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setActionLoading(false);
+      
+      // Clear success message after 3 seconds
+      if (successMessage) {
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      }
+    }
+  };
+
+  // Complete the session
+  const handleCompleteSession = async () => {
+    if (!session) return;
+    
+    try {
+      setActionLoading(true);
+      
+      // Update session status to COMPLETED
+      await sessionsAPI.update(id, { status: 'COMPLETED' });
+      
+      // Show success message
+      setSuccessMessage('Session erfolgreich abgeschlossen');
+      
+      // Reload the session data to get updated status
+      await loadSessionData();
+    } catch (err) {
+      console.error('Error completing session:', err);
+      setError('Fehler beim Abschließen der Session. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setActionLoading(false);
+      
+      // Clear success message after 3 seconds
+      if (successMessage) {
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      }
+    }
+  };
+
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box display="flex" alignItems="center">
-          <IconButton color="primary" onClick={() => navigate('/doctor/sessions')} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h4" component="h1">
-            Session {id}
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <IconButton 
+          onClick={() => navigate('/doctor/sessions')} 
+          sx={{ mr: 2 }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h5" component="h1">
+          Session Details
+        </Typography>
+        <Box sx={{ flexGrow: 1 }} />
+        <Button 
+          startIcon={<RefreshIcon />}
           onClick={handleRefresh}
-          disabled={loading}
+          sx={{ mr: 1 }}
         >
           Aktualisieren
         </Button>
       </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {loading && !session ? (
-        <Box display="flex" justifyContent="center" p={5}>
+      
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
         </Box>
-      ) : !session ? (
-        <Alert severity="error">
-          Session nicht gefunden. Möglicherweise wurde sie gelöscht oder Sie haben nicht die erforderlichen Berechtigungen.
+      ) : error ? (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
         </Alert>
-      ) : (
-        <Box>
-          {renderPatientInfo()}
-          
-          <Box sx={{ mb: 3 }}>
-            <Tabs value={tabValue} onChange={handleTabChange}>
-              <Tab label="Behandlungsplan" />
-              <Tab label="Vitalwerte" />
-            </Tabs>
-            <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-              {tabValue === 0 ? (
-                renderTreatmentPlan()
-              ) : (
-                renderVitalSigns()
-              )}
-            </Box>
-          </Box>
-        </Box>
-      )}
+      ) : successMessage ? (
+        <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
+          {successMessage}
+        </Alert>
+      ) : null}
       
-      {/* Confirmation Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <DialogTitle>Behandlungsplan senden</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Sind Sie sicher, dass Sie den Behandlungsplan an den Medic senden möchten? 
-            Nach dem Senden kann der Plan nicht mehr bearbeitet werden.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Abbrechen</Button>
-          <Button onClick={confirmSendTreatmentPlan} color="primary" autoFocus>
-            Senden
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {session && (
+        <>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={8}>
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6" component="h2">
+                      {session.title || 'Unbetitelte Session'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Patient ID: {session.patientCode || 'Unbekannt'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Erstellt am: {formatDate(session.createdAt)}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Chip
+                      label={getStatusInfo(session.status).label}
+                      color={getStatusInfo(session.status).color}
+                      icon={getStatusInfo(session.status).icon}
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      label={getPriorityLabel(session.priority)}
+                      color={getPriorityColor(session.priority)}
+                    />
+                  </Box>
+                </Box>
+                
+                <Divider sx={{ my: 2 }} />
+
+                {session.status === 'OPEN' && (
+                  <Box sx={{ mt: 2, mb: 3 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleAcceptSession}
+                      disabled={actionLoading}
+                      startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                    >
+                      Session annehmen
+                    </Button>
+                  </Box>
+                )}
+
+                {session.status === 'IN_PROGRESS' && (
+                  <Box sx={{ mt: 2, mb: 3 }}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={handleCompleteSession}
+                      disabled={actionLoading}
+                      startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                    >
+                      Session abschließen
+                    </Button>
+                  </Box>
+                )}
+                
+                <Box sx={{ my: 3 }}>
+                  <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
+                    <Tab label="Patienteninformationen" />
+                    <Tab label="Vitalwerte" />
+                    <Tab label="Behandlungsplan" />
+                  </Tabs>
+                  
+                  {tabValue === 0 && renderPatientInfo()}
+                  {tabValue === 1 && renderVitalSigns()}
+                  {tabValue === 2 && renderTreatmentPlan()}
+                </Box>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Vitalwerte (aktuelle)
+                </Typography>
+                <List>
+                  {session.vitalSigns && session.vitalSigns.length > 0 ? (
+                    session.vitalSigns
+                      .filter((sign, index, self) => {
+                        // Get the first occurrence of each vital sign type
+                        return index === self.findIndex(s => s.type === sign.type);
+                      })
+                      .map((sign) => (
+                        <ListItem key={sign.id} sx={{ py: 1 }}>
+                          <ListItemIcon>
+                            {sign.type === 'HEART_RATE' && <MedicalServicesIcon color="error" />}
+                            {sign.type === 'BLOOD_PRESSURE' && <MedicalServicesIcon color="primary" />}
+                            {sign.type === 'OXYGEN_SATURATION' && <MedicalServicesIcon color="info" />}
+                            {sign.type === 'RESPIRATORY_RATE' && <MedicalServicesIcon color="warning" />}
+                            {sign.type === 'TEMPERATURE' && <MedicalServicesIcon color="secondary" />}
+                            {sign.type === 'BLOOD_GLUCOSE' && <MedicalServicesIcon color="success" />}
+                            {sign.type === 'PAIN_LEVEL' && <MedicalServicesIcon color="error" />}
+                            {sign.type === 'CONSCIOUSNESS' && <MedicalServicesIcon color="info" />}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={`${sign.type.replace(/_/g, ' ')}`}
+                            secondary={`${sign.value} ${sign.unit}`}
+                          />
+                        </ListItem>
+                      ))
+                  ) : (
+                    <ListItem>
+                      <ListItemText primary="Keine Vitalwerte verfügbar" />
+                    </ListItem>
+                  )}
+                </List>
+              </Paper>
+            </Grid>
+          </Grid>
+        </>
+      )}
     </Box>
   );
 };

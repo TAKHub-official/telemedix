@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import AdminLayout from './components/layouts/AdminLayout';
 import DoctorLayout from './components/layouts/DoctorLayout';
+import MedicLayout from './components/layouts/MedicLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
@@ -14,6 +15,11 @@ import Sessions from './pages/doctor/Sessions';
 import SessionDetail from './pages/doctor/SessionDetail';
 import Archives from './pages/doctor/Archives';
 import TestPage from './pages/doctor/TestPage';
+import MedicDashboard from './pages/medic/Dashboard';
+import MedicSessions from './pages/medic/Sessions';
+import MedicHistory from './pages/medic/History';
+import NewSession from './pages/medic/NewSession';
+import MedicSessionDetail from './pages/medic/SessionDetail';
 
 // Simple test page directly included
 const SimplePage = () => (
@@ -44,7 +50,7 @@ function App() {
       case 'DOCTOR':
         return '/doctor/dashboard';
       case 'MEDIC':
-        return '/medic';
+        return '/medic/dashboard';
       default:
         return '/login';
     }
@@ -82,6 +88,20 @@ function App() {
         <Route path="sessions/:id" element={<SessionDetail />} />
         <Route path="archives" element={<Archives />} />
         <Route index element={<Navigate to="/doctor/dashboard" replace />} />
+      </Route>
+      
+      {/* Medic routes */}
+      <Route path="/medic" element={
+        <ProtectedRoute isAllowed={isAuthenticated && user?.role === 'MEDIC'} redirectPath="/login">
+          <MedicLayout />
+        </ProtectedRoute>
+      }>
+        <Route path="dashboard" element={<MedicDashboard />} />
+        <Route path="sessions" element={<MedicSessions />} />
+        <Route path="sessions/:id" element={<MedicSessionDetail />} />
+        <Route path="history" element={<MedicHistory />} />
+        <Route path="new-session" element={<NewSession />} />
+        <Route index element={<Navigate to="/medic/dashboard" replace />} />
       </Route>
       
       {/* Doctor test route (for backward compatibility) */}

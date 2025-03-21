@@ -78,7 +78,7 @@ const DoctorDashboard = () => {
       
       // Calculate stats from the response data
       const activeSessions = sessionsArray.filter(session => session.status === 'ACTIVE').length;
-      const pendingSessions = sessionsArray.filter(session => session.status === 'PENDING').length;
+      const pendingSessions = sessionsArray.filter(session => session.status === 'OPEN').length;
       const completedToday = sessionsArray.filter(session => {
         if (!session.updatedAt) return false;
         
@@ -323,7 +323,7 @@ const DoctorDashboard = () => {
       // Filter based on tab value
       if (tabValue === 0) return true; // All sessions
       if (tabValue === 1) return session.status === 'ACTIVE'; // Active
-      if (tabValue === 2) return session.status === 'PENDING'; // Pending
+      if (tabValue === 2) return session.status === 'OPEN'; // Changed from 'PENDING' to 'OPEN'
       return false;
     });
 
@@ -416,7 +416,7 @@ const DoctorDashboard = () => {
                 >
                   Ansehen
                 </Button>
-                {session.status === 'PENDING' && (
+                {session.status === 'OPEN' && (
                   <Button
                     size="small"
                     variant="contained"

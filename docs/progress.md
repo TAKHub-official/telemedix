@@ -37,6 +37,8 @@
 - ✅ Socket.IO-Service für Echtzeit-Updates
 - ✅ Rollenbasierte Anmeldung und Routing implementiert
 - ✅ CSP-Konfiguration für WebSocket-Verbindungen
+- ✅ Medic Dashboard mit Session-Übersicht implementiert
+- ✅ Anamnesebogen-Erfassung für Medics implementiert
 
 ### Dokumentation
 - ✅ Benutzeranleitung
@@ -73,14 +75,16 @@
    - ✅ DoctorLayout mit Navigation und Benutzermenü
    - ✅ Dashboard mit Statistiken und Session-Übersicht
    - ✅ Sessions-Verwaltung (Liste, Suche, Filter)
-   - ⏩ Session-Detailansicht
+   - ✅ Session-Detailansicht
    - ⏩ Behandlungsplan-Erstellung und -Bearbeitung
    - ⏩ Vitalwerte-Visualisierung
-3. Medic-Bereich
-   - Anamnesebogen-Erfassung
-   - Session-Erstellung
-   - Behandlungsplan-Abarbeitung
-   - Offline-Funktionalität
+3. Medic-Bereich (teilweise abgeschlossen)
+   - ✅ Anamnesebogen-Erfassung
+   - ✅ Session-Erstellung
+   - ✅ Session-Übersicht und Filterung
+   - ✅ Session-Anzeige mit Statusänderungen in Echtzeit
+   - ⏩ Behandlungsplan-Abarbeitung
+   - ⏩ Offline-Funktionalität
 
 ### Phase 4: Offline-Funktionalität und PWA-Features
 1. IndexedDB für lokale Datenspeicherung implementieren
@@ -104,6 +108,7 @@
 2. CI/CD-Pipeline einrichten
 3. Monitoring und Logging
 4. ✅ Benutzerhandbücher erstellt
+5. ✅ Docker-basiertes Test-Setup mit Rebuild und Seed-Scripts
 
 ## Technologie-Stack
 
@@ -134,7 +139,9 @@
 ## Aktuelle Herausforderungen
 - ✅ Implementierung der Arzt-Benutzeroberfläche mit Dashboard und Session-Verwaltung
 - ✅ Wartende Sessions für Ärzte sichtbar machen
-- Implementierung der Session-Detailansicht
+- ✅ Implementierung der Medic-Benutzeroberfläche mit Dashboard und Session-Erstellung
+- ✅ Implementierung der Session-Detailansicht
+- ✅ Echtzeit-Kommunikation zwischen Medic und Arzt 
+- ✅ Grundlegender Workflow (Session-Erstellung durch Medic, Annahme durch Arzt)
 - Implementierung der TreatmentPlan-Routen und -Controller
-- Offline-Funktionalität und Synchronisierung
-- Echtzeit-Kommunikation zwischen Medic und Arzt 
+- Offline-Funktionalität und Synchronisierung 
