@@ -182,53 +182,86 @@ const Sessions = () => {
   
   const filterSessions = () => {
     return sessions.filter(session => {
-      // Search filter (case insensitive)
-      const matchesSearch = filters.search === '' || 
-        (session.patientName && session.patientName.toLowerCase().includes(filters.search.toLowerCase())) ||
-        (session.medic && session.medic.name && session.medic.name.toLowerCase().includes(filters.search.toLowerCase())) ||
-        (session.id && session.id.toLowerCase().includes(filters.search.toLowerCase()));
+      // Apply search filter
+      if (filters.search && filters.search.trim() !== '') {
+        const searchTerm = filters.search.toLowerCase();
+        const matchesSearch = 
+          (session.patientCode || '').toLowerCase().includes(searchTerm) ||
+          (session.title || '').toLowerCase().includes(searchTerm) ||
+          (session.createdBy ? 
+            `${session.createdBy.firstName || ''} ${session.createdBy.lastName || ''}`.toLowerCase().includes(searchTerm) 
+            : false);
+        
+        if (!matchesSearch) return false;
+      }
       
-      // Status filter
-      const matchesStatus = filters.status === 'all' || session.status === filters.status;
+      // Apply status filter
+      if (filters.status !== 'all' && session.status !== filters.status) {
+        return false;
+      }
       
-      // Priority filter
-      const matchesPriority = filters.priority === 'all' || session.priority === filters.priority;
+      // Apply priority filter
+      if (filters.priority !== 'all' && session.priority !== filters.priority) {
+        return false;
+      }
       
-      return matchesSearch && matchesStatus && matchesPriority;
+      return true;
     });
   };
   
   const sortSessions = (data) => {
-    if (!orderBy) return data;
+    if (!orderBy) {
+      return data;
+    }
     
-    return data.sort((a, b) => {
-      let aValue = a[orderBy];
-      let bValue = b[orderBy];
-      
-      // Handle nested properties
-      if (orderBy === 'medic.name') {
-        aValue = a.medic ? a.medic.name : '';
-        bValue = b.medic ? b.medic.name : '';
+    return [...data].sort((a, b) => {
+      // Handling for nested properties (e.g., 'medic.name')
+      if (orderBy.includes('.')) {
+        const [parent, child] = orderBy.split('.');
+        const aValue = a[parent] ? a[parent][child] : '';
+        const bValue = b[parent] ? b[parent][child] : '';
+        
+        if (!aValue && bValue) return order === 'asc' ? -1 : 1;
+        if (aValue && !bValue) return order === 'asc' ? 1 : -1;
+        if (!aValue && !bValue) return 0;
+        
+        if (order === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
       }
       
-      // Handle date strings
-      if (orderBy === 'createdAt') {
-        return order === 'asc'
-          ? new Date(aValue) - new Date(bValue)
-          : new Date(bValue) - new Date(aValue);
-      }
+      // For regular properties
+      const aValue = a[orderBy] || '';
+      const bValue = b[orderBy] || '';
       
-      // Handle strings (case insensitive)
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
+        if (order === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
       }
       
-      // Handle other types
-      return order === 'asc'
-        ? (aValue < bValue ? -1 : aValue > bValue ? 1 : 0)
-        : (bValue < aValue ? -1 : bValue > aValue ? 1 : 0);
+      // Handle dates
+      if (orderBy === 'createdAt' || orderBy === 'updatedAt' || orderBy === 'completedAt') {
+        const aDate = aValue ? new Date(aValue).getTime() : 0;
+        const bDate = bValue ? new Date(bValue).getTime() : 0;
+        
+        if (order === 'asc') {
+          return aDate - bDate;
+        } else {
+          return bDate - aDate;
+        }
+      }
+      
+      // For other types or if the property doesn't exist on the object
+      if (order === 'asc') {
+        return (aValue > bValue) ? 1 : -1;
+      } else {
+        return (aValue > bValue) ? -1 : 1;
+      }
     });
   };
   
@@ -319,7 +352,7 @@ const Sessions = () => {
           <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
-              label="Suche (Patient, Medic, ID)"
+              label="Suche (Patient-ID, Beschwerde)"
               variant="outlined"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -378,20 +411,20 @@ const Sessions = () => {
                 <TableRow>
                   <TableCell>
                     <TableSortLabel
-                      active={orderBy === 'id'}
-                      direction={orderBy === 'id' ? order : 'asc'}
-                      onClick={() => handleRequestSort('id')}
+                      active={orderBy === 'patientCode'}
+                      direction={orderBy === 'patientCode' ? order : 'asc'}
+                      onClick={() => handleRequestSort('patientCode')}
                     >
-                      ID
+                      Patienten-ID
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
                     <TableSortLabel
-                      active={orderBy === 'patientName'}
-                      direction={orderBy === 'patientName' ? order : 'asc'}
-                      onClick={() => handleRequestSort('patientName')}
+                      active={orderBy === 'title'}
+                      direction={orderBy === 'title' ? order : 'asc'}
+                      onClick={() => handleRequestSort('title')}
                     >
-                      Patient
+                      Hauptbeschwerde
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
@@ -423,9 +456,9 @@ const Sessions = () => {
                   </TableCell>
                   <TableCell>
                     <TableSortLabel
-                      active={orderBy === 'medic.name'}
-                      direction={orderBy === 'medic.name' ? order : 'asc'}
-                      onClick={() => handleRequestSort('medic.name')}
+                      active={orderBy === 'createdBy.firstName'}
+                      direction={orderBy === 'createdBy.firstName' ? order : 'asc'}
+                      onClick={() => handleRequestSort('createdBy.firstName')}
                     >
                       Medic
                     </TableSortLabel>
@@ -459,15 +492,15 @@ const Sessions = () => {
                         }}
                         onClick={() => handleViewSession(session.id)}
                       >
-                        <TableCell>{session.id}</TableCell>
+                        <TableCell>{session.patientCode || 'Nicht verfügbar'}</TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2">
-                              {session.patientName || 'Unbenannt'}
+                              {session.title || 'Keine Beschreibung'}
                             </Typography>
-                            {session.age && (
+                            {session.medicalRecord?.patientAge && (
                               <Typography variant="caption" color="text.secondary">
-                                {session.age} Jahre
+                                {session.medicalRecord.patientAge} Jahre
                               </Typography>
                             )}
                           </Box>
@@ -489,7 +522,9 @@ const Sessions = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          {session.medic?.name || 'Nicht zugewiesen'}
+                          {session.createdBy ? 
+                            `${session.createdBy.firstName || ''} ${session.createdBy.lastName || ''}`.trim() || 'Nicht zugewiesen' 
+                            : 'Nicht zugewiesen'}
                         </TableCell>
                         <TableCell padding="none">
                           <Box sx={{ display: 'flex' }}>

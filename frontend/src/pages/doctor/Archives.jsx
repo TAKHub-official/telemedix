@@ -25,67 +25,9 @@ import {
   History as HistoryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { api as apiService } from '../../services/api';
+import { sessionsAPI } from '../../services/api';
 
-// Mock data for archived sessions
-const mockArchivedSessions = [
-  {
-    id: 'sess-005',
-    patientName: 'Maria Schneider',
-    age: 65,
-    priority: 'MEDIUM',
-    status: 'COMPLETED',
-    createdAt: '2025-03-18T15:30:00Z',
-    completedAt: '2025-03-18T16:45:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-006',
-    patientName: 'Michael Braun',
-    age: 42,
-    priority: 'LOW',
-    status: 'COMPLETED',
-    createdAt: '2025-03-17T10:15:00Z',
-    completedAt: '2025-03-17T11:20:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-007',
-    patientName: 'Sophie Fischer',
-    age: 29,
-    priority: 'HIGH',
-    status: 'COMPLETED',
-    createdAt: '2025-03-16T14:00:00Z',
-    completedAt: '2025-03-16T14:55:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  },
-  {
-    id: 'sess-008',
-    patientName: 'Thomas Becker',
-    age: 58,
-    priority: 'HIGH',
-    status: 'CANCELLED',
-    createdAt: '2025-03-15T09:30:00Z',
-    completedAt: '2025-03-15T09:45:00Z',
-    assignedTo: 'Dr. Thomas Müller',
-    medic: {
-      name: 'Lukas Wagner',
-      id: 'medic-001'
-    }
-  }
-];
+// Keine Mockup-Daten mehr
 
 const Archives = () => {
   const [sessions, setSessions] = useState([]);
@@ -106,13 +48,14 @@ const Archives = () => {
       try {
         setLoading(true);
         
-        // In a real implementation, you would fetch data from the API
-        // For now, we'll simulate an API delay with mock data
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Echte API-Anfrage an das Backend
+        const response = await sessionsAPI.getAll({ 
+          status: ['COMPLETED', 'CANCELLED']  // Nur abgeschlossene und abgebrochene Sessions
+        });
         
-        // Set mock data
-        setSessions(mockArchivedSessions);
-        setFilteredSessions(mockArchivedSessions);
+        const archivedSessions = response.data.sessions || [];
+        setSessions(archivedSessions);
+        setFilteredSessions(archivedSessions);
         setError(null);
       } catch (err) {
         console.error('Error loading archived sessions:', err);
@@ -283,7 +226,8 @@ const Archives = () => {
                   currentSessions.map((session) => (
                     <TableRow key={session.id}>
                       <TableCell>
-                        {session.patientName}, {session.age}
+                        {session.patientCode || 'Nicht verfügbar'}
+                        {session.medicalRecord?.patientAge && `, ${session.medicalRecord.patientAge}`}
                       </TableCell>
                       <TableCell>
                         <Chip

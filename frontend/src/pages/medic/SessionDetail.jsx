@@ -33,8 +33,27 @@ const SessionDetail = () => {
         setLoading(true);
         setError(null);
         
+        console.log('Fetching session details for ID:', id);
         const response = await sessionService.getSessionById(id);
-        setSession(response.session);
+        console.log('Session response received:', response);
+        
+        // Handle different response structures
+        let sessionData = null;
+        if (response && response.data && response.data.session) {
+          sessionData = response.data.session;
+        } else if (response && response.session) {
+          sessionData = response.session;
+        } else if (response && response.data) {
+          sessionData = response.data;
+        }
+        
+        if (sessionData) {
+          console.log('Session data extracted:', sessionData);
+          setSession(sessionData);
+        } else {
+          console.error('No session data found in response');
+          setError('Keine Session-Daten gefunden');
+        }
       } catch (err) {
         console.error('Error fetching session details:', err);
         setError('Fehler beim Laden der Session-Details. Bitte versuchen Sie es später erneut.');

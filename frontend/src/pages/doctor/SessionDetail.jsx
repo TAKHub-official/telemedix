@@ -58,6 +58,27 @@ import {
 import { sessionsAPI, treatmentPlansAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 
+// Safe parsing of JSON data
+const safelyParseJSON = (jsonString, defaultValue = {}) => {
+  if (!jsonString) return defaultValue;
+  
+  // If it's already an object, return it
+  if (typeof jsonString === 'object') return jsonString;
+  
+  try {
+    // Check if the string looks like JSON
+    if (typeof jsonString === 'string' && 
+        (jsonString.startsWith('{') || jsonString.startsWith('['))) {
+      return JSON.parse(jsonString);
+    }
+    // Otherwise return the string as is
+    return jsonString;
+  } catch (error) {
+    console.error('Failed to parse JSON:', error);
+    return defaultValue;
+  }
+};
+
 const SessionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -78,113 +99,81 @@ const SessionDetail = () => {
   
   // Fetch session data
   useEffect(() => {
-    const loadData = async () => {
-      if (id) {
-        setLoading(true);
-        try {
-          const data = await sessionsAPI.getById(id);
-          if (data?.session) {
-            setSession(data.session);
-            
-            // Load treatment plan if this is a doctor viewing
-            if (user?.role === 'DOCTOR') {
-              loadTreatmentPlan();
-            }
-          }
-        } catch (err) {
-          console.error('Error loading session:', err);
-          setError('Fehler beim Laden der Session');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadData();
-  }, [id, user]);
+    if (id) {
+      loadSessionData();
+    }
+  }, [id]);
   
   const loadSessionData = async () => {
     try {
       setLoading(true);
       
-      // Fetch session data
+      // Fetch session data with debug logging
+      console.log('Fetching session data for ID:', id);
       const sessionResponse = await sessionsAPI.getById(id);
+      console.log('Session response received:', sessionResponse);
       
-      if (sessionResponse && sessionResponse.data) {
-        const sessionData = sessionResponse.data.session;
-        
-        // Safely handle medical record data without forcing JSON parsing
-        if (sessionData.medicalRecord) {
-          const medicalRecord = sessionData.medicalRecord;
-          
-          // Only try to parse if it looks like JSON (starts with { or [)
-          if (medicalRecord.patientHistory && typeof medicalRecord.patientHistory === 'string') {
-            const firstChar = medicalRecord.patientHistory.trim()[0];
-            if (firstChar === '{' || firstChar === '[') {
-              try {
-                medicalRecord.patientHistory = JSON.parse(medicalRecord.patientHistory);
-              } catch (e) {
-                console.log('Error parsing patient history, keeping as string');
-                // Keep as string if parsing fails
-              }
-            }
-          }
-          
-          // Same for current medications
-          if (medicalRecord.currentMedications && typeof medicalRecord.currentMedications === 'string') {
-            const firstChar = medicalRecord.currentMedications.trim()[0];
-            if (firstChar === '{' || firstChar === '[') {
-              try {
-                medicalRecord.currentMedications = JSON.parse(medicalRecord.currentMedications);
-              } catch (e) {
-                console.log('Error parsing current medications, keeping as string');
-                // Keep as string if parsing fails
-              }
-            }
-          }
-          
-          // Same for allergies
-          if (medicalRecord.allergies && typeof medicalRecord.allergies === 'string') {
-            const firstChar = medicalRecord.allergies.trim()[0];
-            if (firstChar === '{' || firstChar === '[') {
-              try {
-                medicalRecord.allergies = JSON.parse(medicalRecord.allergies);
-              } catch (e) {
-                console.log('Error parsing allergies, keeping as string');
-                // Keep as string if parsing fails
-              }
-            }
-          }
-        }
-        
-        console.log('Session data:', sessionData);
-        setSession(sessionData);
-        
-        // Try to load treatment plan for this session
-        try {
-          const treatmentResponse = await treatmentPlansAPI.getBySessionId(id);
-          
-          if (treatmentResponse && treatmentResponse.data && treatmentResponse.data.treatmentPlan) {
-            const plan = treatmentResponse.data.treatmentPlan;
-            setTreatmentPlan(plan);
-            setTreatmentSteps(plan.steps || []);
-            setDiagnosis(plan.diagnosis || '');
-          }
-        } catch (treatmentError) {
-          // Treatment plan may not exist yet, that's ok
-          console.log('No treatment plan found, may need to create one');
-          setTreatmentPlan(null);
-          setTreatmentSteps([]);
-          setDiagnosis('');
-        }
-      } else {
-        throw new Error('Invalid response format');
+      // Handle response structure variants
+      let sessionData = null;
+      if (sessionResponse && sessionResponse.data && sessionResponse.data.session) {
+        // Structure: { data: { session: {...} } }
+        sessionData = sessionResponse.data.session;
+      } else if (sessionResponse && sessionResponse.session) {
+        // Structure: { session: {...} }
+        sessionData = sessionResponse.session;
+      } else if (sessionResponse && sessionResponse.data) {
+        // Structure: { data: {...} }
+        sessionData = sessionResponse.data;
       }
       
-      setError(null);
+      if (sessionData) {
+        console.log('Session data extracted:', sessionData);
+        setSession(sessionData);
+        
+        // Initialisierung von userData
+        const userData = JSON.parse(localStorage.getItem('user'));
+        setUser(userData);
+        
+        // Load treatment plan if this is a doctor viewing
+        if (userData?.role === 'DOCTOR') {
+          try {
+            console.log('Fetching treatment plan for session:', id);
+            const result = await treatmentPlansAPI.getBySessionId(id);
+            console.log('Treatment plan response:', result);
+            
+            // Handle treatment plan response variants
+            let treatmentPlanData = null;
+            if (result && result.data && result.data.treatmentPlan) {
+              // Structure: { data: { treatmentPlan: {...} } }
+              treatmentPlanData = result.data.treatmentPlan;
+            } else if (result && result.treatmentPlan) {
+              // Structure: { treatmentPlan: {...} }
+              treatmentPlanData = result.treatmentPlan;
+            }
+            
+            if (treatmentPlanData) {
+              console.log('Treatment plan extracted:', treatmentPlanData);
+              setTreatmentPlan(treatmentPlanData);
+              
+              // Set additional data
+              setDiagnosis(treatmentPlanData.diagnosis || '');
+              setTreatmentSteps(treatmentPlanData.steps || []);
+            }
+          } catch (tpError) {
+            console.error('Error loading treatment plan:', tpError);
+            // Keine Fehlermeldung für 404, da möglicherweise noch kein Plan existiert
+          }
+        }
+        
+        // Clear any previous errors
+        setError(null);
+      } else {
+        console.error('No session data found in response');
+        setError('Keine Session-Daten gefunden');
+      }
     } catch (err) {
       console.error('Error loading session:', err);
-      setError('Fehler beim Laden der Session-Daten. Bitte versuchen Sie es später erneut.');
+      setError('Fehler beim Laden der Session');
     } finally {
       setLoading(false);
     }
@@ -612,7 +601,14 @@ const SessionDetail = () => {
     // Parse patient history safely
     let patientHistory = {};
     try {
-      if (session.patientHistory) {
+      if (session.medicalRecord && session.medicalRecord.patientHistory) {
+        const history = safelyParseJSON(session.medicalRecord.patientHistory, {});
+        if (typeof history === 'object') {
+          patientHistory = history;
+        } else {
+          patientHistory = { description: history };
+        }
+      } else if (session.patientHistory) {
         const history = safelyParseJSON(session.patientHistory, {});
         if (typeof history === 'object') {
           patientHistory = history;
@@ -630,11 +626,11 @@ const SessionDetail = () => {
     const personalInfo = patientHistory.personalInfo || {};
     
     // Safely get patient name from different possible sources
-    const patientName = personalInfo.fullName || session.title || 'Nicht angegeben';
+    const patientName = personalInfo.fullName || session.title || session.patientCode || 'Nicht angegeben';
     
     // Safely get patient age and gender
-    const patientAge = personalInfo.age || (session.patientCode ? parseInt(session.patientCode.split('-')[1]) : null) || 'Nicht angegeben';
-    const patientGender = personalInfo.gender || (patientHistory.gender || 'Nicht angegeben');
+    const patientAge = personalInfo.age || patientHistory.age || (session.patientCode ? parseInt(session.patientCode.split('-')[1]) : null) || 'Nicht angegeben';
+    const patientGender = personalInfo.gender || patientHistory.gender || 'Nicht angegeben';
     
     // Extract symptoms - checking multiple possible locations
     let symptoms = [];
@@ -692,6 +688,11 @@ const SessionDetail = () => {
             <Grid item xs={12} sm={6} md={4}>
               <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
               <Typography variant="body1">{patientGender}</Typography>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography variant="subtitle2" color="text.secondary">Patienten-ID</Typography>
+              <Typography variant="body1">{session.patientCode || 'Nicht verfügbar'}</Typography>
             </Grid>
             
             <Grid item xs={12} sm={6} md={4}>
@@ -1130,27 +1131,6 @@ const SessionDetail = () => {
       setError('Fehler beim Abschließen der Session');
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  // Safe parsing of JSON data
-  const safelyParseJSON = (jsonString, defaultValue = {}) => {
-    if (!jsonString) return defaultValue;
-    
-    // If it's already an object, return it
-    if (typeof jsonString === 'object') return jsonString;
-    
-    try {
-      // Check if the string looks like JSON
-      if (typeof jsonString === 'string' && 
-          (jsonString.startsWith('{') || jsonString.startsWith('['))) {
-        return JSON.parse(jsonString);
-      }
-      // Otherwise return the string as is
-      return jsonString;
-    } catch (error) {
-      console.error('Failed to parse JSON:', error);
-      return defaultValue;
     }
   };
 
