@@ -112,10 +112,16 @@ const sessionsAPI = {
   create: (data) => api.post('/sessions', data),
   update: (id, data) => {
     console.log(`API call: updating session ${id} with data:`, data);
-    return api.put(`/sessions/${id}`, data).then(response => {
-      console.log('Session update response:', response);
-      return response.data;
-    });
+    return api.put(`/sessions/${id}`, data)
+      .then(response => {
+        console.log('Session update success response:', response);
+        return response.data;
+      })
+      .catch(error => {
+        console.error('Session update error:', error);
+        console.error('Error response:', error.response?.data);
+        throw error;
+      });
   },
   assign: (id, doctorId) => {
     console.log(`API call: assigning session ${id} to doctor`, doctorId || 'current user');

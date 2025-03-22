@@ -39,6 +39,8 @@ model Session {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   completedAt     DateTime?
+  completionReason String?     // Reason for completing the session
+  completionNote  String?     // Additional notes on completion reason
   createdById     String
   createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
   assignedToId    String?

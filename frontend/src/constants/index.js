@@ -22,4 +22,7 @@ export {
   TEMPERATURE_OPTIONS,
   BLOOD_GLUCOSE_OPTIONS,
   AGE_OPTIONS
-} from './medicalOptions'; 
+} from './medicalOptions';
+
+// Session completion reasons
+export { SESSION_COMPLETION_REASONS } from './sessionOptions'; 

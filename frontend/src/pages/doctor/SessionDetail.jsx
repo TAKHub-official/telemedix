@@ -15,7 +15,16 @@ import {
   CardHeader,
   IconButton,
   Tabs,
-  Tab
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -28,10 +37,15 @@ import {
   Bloodtype as BloodtypeIcon,
   Air as AirIcon,
   WaterDrop as WaterDropIcon,
-  Speed as SpeedIcon
+  Speed as SpeedIcon,
+  LocalHospital as LocalHospitalIcon,
+  Person as PersonIcon,
+  Event as EventIcon,
+  Note as NoteIcon
 } from '@mui/icons-material';
 import { sessionsAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { SESSION_COMPLETION_REASONS } from '../../constants';
 
 // Safe parsing of JSON data
 const safelyParseJSON = (jsonString, defaultValue = {}) => {
@@ -65,6 +79,12 @@ const SessionDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [user, setUser] = useState(null);
+  
+  // Add states for the completion dialog
+  const [openCompletionDialog, setOpenCompletionDialog] = useState(false);
+  const [completionReason, setCompletionReason] = useState('');
+  const [completionNote, setCompletionNote] = useState('');
+  const [isOtherReason, setIsOtherReason] = useState(false);
   
   // Fetch session data
   useEffect(() => {
@@ -254,6 +274,15 @@ const SessionDetail = () => {
       });
     });
     
+    // Sort each group of vital signs by timestamp (oldest first)
+    Object.keys(vitalSignsByType).forEach(type => {
+      vitalSignsByType[type].sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.createdAt);
+        const dateB = new Date(b.timestamp || b.createdAt);
+        return dateA - dateB;
+      });
+    });
+    
     return (
       <Grid container spacing={3}>
         {Object.entries(vitalSignsByType).map(([type, signs]) => {
@@ -312,6 +341,89 @@ const SessionDetail = () => {
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           Weitere Werte werden als Graph angezeigt
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          } else if (type === 'CONSCIOUSNESS') {
+            // Spezielle Darstellung für Bewusstseinszustand
+            return (
+              <Grid item xs={12} md={6} key={type}>
+                <Card>
+                  <CardHeader title={chartTitle} />
+                  <CardContent>
+                    {signs.length > 0 ? (
+                      <>
+                        <Typography variant="body2" gutterBottom>
+                          Zeitlicher Verlauf des Bewusstseinszustands:
+                        </Typography>
+                        <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                          <Box sx={{ minWidth: signs.length * 70, mt: 2 }}>
+                            {signs.map((sign, index) => {
+                              // Farbkodierung für Bewusstseinszustände
+                              const getColor = (value) => {
+                                switch(value) {
+                                  case 'A': 
+                                  case 'ALERT': return '#4caf50'; // Grün für Alert
+                                  case 'V': 
+                                  case 'VERBAL': return '#2196f3'; // Blau für Verbal
+                                  case 'P': 
+                                  case 'PAIN': return '#ff9800'; // Orange für Pain
+                                  case 'U': 
+                                  case 'UNRESPONSIVE': return '#f44336'; // Rot für Unresponsive
+                                  default: return '#9e9e9e'; // Grau für unbekannt
+                                }
+                              };
+                              
+                              return (
+                                <Box 
+                                  key={index} 
+                                  sx={{ 
+                                    display: 'inline-block', 
+                                    textAlign: 'center',
+                                    m: 0.5,
+                                    verticalAlign: 'top',
+                                    width: 80
+                                  }}
+                                >
+                                  <Paper
+                                    elevation={3}
+                                    sx={{
+                                      p: 1,
+                                      bgcolor: getColor(sign.value || ''),
+                                      color: 'white',
+                                      width: 70,
+                                      height: 70,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontWeight: 'bold',
+                                      fontSize: '24px',
+                                      mx: 'auto'
+                                    }}
+                                  >
+                                    {sign.value === 'ALERT' ? 'A' : 
+                                     sign.value === 'VERBAL' ? 'V' : 
+                                     sign.value === 'PAIN' ? 'P' : 
+                                     sign.value === 'UNRESPONSIVE' ? 'U' : 
+                                     sign.value || '?'}
+                                  </Paper>
+                                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                                    {sign.time}
+                                  </Typography>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        </Box>
+                      </>
+                    ) : (
+                      <Box sx={{ p: 2, textAlign: 'center' }}>
+                        <Typography variant="body1" gutterBottom>
+                          Keine Bewusstseinsdaten verfügbar
                         </Typography>
                       </Box>
                     )}
@@ -426,13 +538,7 @@ const SessionDetail = () => {
     return (
       <Card sx={{ mb: 3 }}>
         <CardHeader 
-          title="Patienteninformationen" 
-          action={
-            <Chip 
-              label={getPriorityLabel(session.priority)} 
-              color={getPriorityColor(session.priority)}
-            />
-          }
+          title="Patienteninformationen"
         />
         <Divider />
         <CardContent>
@@ -462,15 +568,20 @@ const SessionDetail = () => {
               <Typography variant="body1">{formatDate(session.createdAt)}</Typography>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-              <Chip 
-                icon={getStatusInfo(session.status).icon}
-                label={getStatusInfo(session.status).label}
-                color={getStatusInfo(session.status).color}
-                size="small"
-              />
-            </Grid>
+            {/* Show completion reason only if status is COMPLETED */}
+            {session.status === 'COMPLETED' && session.completionReason && (
+              <Grid item xs={12} sm={6} md={4}>
+                <Typography variant="subtitle2" color="text.secondary">Abschlussgrund</Typography>
+                <Typography variant="body1">
+                  {SESSION_COMPLETION_REASONS.find(r => r.value === session.completionReason)?.label || session.completionReason}
+                </Typography>
+                {session.completionNote && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {session.completionNote}
+                  </Typography>
+                )}
+              </Grid>
+            )}
             
             <Grid item xs={12} sm={6} md={4}>
               <Typography variant="subtitle2" color="text.secondary">Medic</Typography>
@@ -655,43 +766,87 @@ const SessionDetail = () => {
     }
   };
 
-  // Complete the session
-  const handleCompleteSession = async () => {
-    if (!session) return;
+  // Handle opening the completion dialog
+  const handleOpenCompletionDialog = () => {
+    setCompletionReason('');
+    setCompletionNote('');
+    setIsOtherReason(false);
+    setOpenCompletionDialog(true);
+  };
+  
+  // Handle closing the completion dialog
+  const handleCloseCompletionDialog = () => {
+    setOpenCompletionDialog(false);
+  };
+  
+  // Handle completion reason change
+  const handleCompletionReasonChange = (event) => {
+    const value = event.target.value;
+    setCompletionReason(value);
+    setIsOtherReason(value === 'OTHER');
+  };
+  
+  // Complete the session with reason
+  const handleCompleteSessionWithReason = async () => {
+    if (!session || !completionReason) return;
     
     try {
       setActionLoading(true);
       setError(null); // Clear any previous errors
+      handleCloseCompletionDialog();
       
       console.log('Starting session completion process for ID:', id);
+      console.log('Completion reason:', completionReason);
+      console.log('Completion note:', completionNote);
+      
+      // Prepare update data including the completion reason
+      const updateData = {
+        status: 'COMPLETED',
+        completionReason: completionReason,
+        completionNote: isOtherReason ? completionNote : ''
+      };
       
       // Update UI immediately to show status change
       setSession(prevState => ({
         ...prevState,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        completionReason: completionReason,
+        completionNote: isOtherReason ? completionNote : ''
       }));
       
       // Complete the session
-      console.log('Updating session status to COMPLETED...');
-      const response = await sessionsAPI.update(id, { status: 'COMPLETED' });
-      console.log('Session complete result:', response);
-      
-      if (response) {
-        setSuccessMessage('Die Session wurde erfolgreich abgeschlossen');
+      console.log('Updating session status to COMPLETED with reason...');
+      try {
+        const response = await sessionsAPI.update(id, updateData);
+        console.log('Session complete result:', response);
         
-        // Update UI again after API call
-        setSession(prevState => ({
-          ...prevState,
-          status: 'COMPLETED',
-          completedAt: new Date().toISOString()
-        }));
-        
-        // Add a small delay before reloading data to ensure backend has updated
-        console.log('Waiting before reloading session data...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Final data refresh
-        console.log('Reloading session data...');
+        if (response) {
+          setSuccessMessage('Die Session wurde erfolgreich abgeschlossen');
+          
+          // Update UI again after API call
+          setSession(prevState => ({
+            ...prevState,
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString(),
+            completionReason: completionReason,
+            completionNote: isOtherReason ? completionNote : ''
+          }));
+          
+          // Add a small delay before reloading data to ensure backend has updated
+          console.log('Waiting before reloading session data...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Final data refresh
+          console.log('Reloading session data...');
+          await loadSessionData();
+        } else {
+          console.error('No response received from update API call');
+          setError('Fehler beim Abschließen der Session: Keine Antwort vom Server');
+          await loadSessionData();
+        }
+      } catch (apiError) {
+        console.error('API call error:', apiError);
+        setError(`Fehler beim Abschließen der Session: ${apiError.message || 'Unbekannter Fehler'}`);
         await loadSessionData();
       }
     } catch (error) {
@@ -703,6 +858,11 @@ const SessionDetail = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Replace the original handleCompleteSession
+  const handleCompleteSession = () => {
+    handleOpenCompletionDialog();
   };
 
   return (
@@ -819,6 +979,64 @@ const SessionDetail = () => {
           </Paper>
         </>
       )}
+
+      {/* Session Completion Dialog */}
+      <Dialog open={openCompletionDialog} onClose={handleCloseCompletionDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Session abschließen</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Bitte wählen Sie einen Grund für den Abschluss dieser Session:
+          </Typography>
+          
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="completion-reason-label">Abschlussgrund</InputLabel>
+            <Select
+              labelId="completion-reason-label"
+              value={completionReason}
+              onChange={handleCompletionReasonChange}
+              label="Abschlussgrund"
+              required
+            >
+              {SESSION_COMPLETION_REASONS.map((reason) => (
+                <MenuItem key={reason.value} value={reason.value}>
+                  {reason.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          {isOtherReason && (
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Sonstiger Grund (bitte spezifizieren)"
+              value={completionNote}
+              onChange={(e) => setCompletionNote(e.target.value)}
+              multiline
+              rows={3}
+              required
+              placeholder="Bitte geben Sie den Grund an, warum die Session abgeschlossen wird..."
+            />
+          )}
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Hinweis: Nach dem Abschließen wird diese Session archiviert und kann nicht mehr bearbeitet werden.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCompletionDialog} color="inherit">
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCompleteSessionWithReason} 
+            color="success" 
+            variant="contained"
+            disabled={!completionReason || (isOtherReason && !completionNote)}
+          >
+            Session abschließen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

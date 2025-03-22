@@ -241,7 +241,7 @@ const createSession = async (req, res) => {
 const updateSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, priority, status } = req.body;
+    const { title, priority, status, completionReason, completionNote } = req.body;
     
     // Find session by ID
     const session = await SessionModel.findById(id);
@@ -293,6 +293,15 @@ const updateSession = async (req, res) => {
           // Valid progression: ASSIGNED/IN_PROGRESS -> COMPLETED
           updateData.status = 'COMPLETED';
           updateData.completedAt = new Date();
+          
+          // Store completion reason and note if provided
+          if (completionReason) {
+            updateData.completionReason = completionReason;
+          }
+          
+          if (completionNote) {
+            updateData.completionNote = completionNote;
+          }
         } else {
           // General case
           updateData.status = status.toUpperCase();
