@@ -199,7 +199,7 @@ const MedicDashboard = () => {
       {/* Recent Sessions */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" component="h2" gutterBottom>
-          Aktuelle Sessions
+          Aktuelle Sessions (offen oder in Bearbeitung)
         </Typography>
         
         {loading ? (
@@ -214,40 +214,43 @@ const MedicDashboard = () => {
           </Alert>
         ) : (
           <Box>
-            {sessions.slice(0, 5).map((session) => (
-              <Card key={session.id} sx={{ mb: 2, cursor: 'pointer' }} onClick={() => navigate(`/medic/sessions/${session.id}`)}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" component="div">
-                      {session.title}
-                    </Typography>
-                    <Stack direction="row" spacing={1}>
-                      {renderStatusChip(session.status)}
-                      {renderPriorityChip(session.priority)}
-                    </Stack>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Session-ID: {session.patientCode}
-                  </Typography>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Erstellt: {new Date(session.createdAt).toLocaleString('de-DE')}
-                    </Typography>
-                    {session.assignedTo && (
-                      <Typography variant="body2" color="text.secondary">
-                        Arzt: {session.assignedTo.firstName} {session.assignedTo.lastName}
+            {sessions
+              .filter(session => session.status !== 'COMPLETED')
+              .slice(0, 5)
+              .map((session) => (
+                <Card key={session.id} sx={{ mb: 2, cursor: 'pointer' }} onClick={() => navigate(`/medic/sessions/${session.id}`)}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="h6" component="div">
+                        {session.title}
                       </Typography>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
+                      <Stack direction="row" spacing={1}>
+                        {renderStatusChip(session.status)}
+                        {renderPriorityChip(session.priority)}
+                      </Stack>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Session-ID: {session.patientCode}
+                    </Typography>
+                    <Divider sx={{ my: 1 }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Erstellt: {new Date(session.createdAt).toLocaleString('de-DE')}
+                      </Typography>
+                      {session.assignedTo && (
+                        <Typography variant="body2" color="text.secondary">
+                          Arzt: {session.assignedTo.firstName} {session.assignedTo.lastName}
+                        </Typography>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
             
-            {sessions.length > 5 && (
+            {sessions.filter(session => session.status !== 'COMPLETED').length > 5 && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                 <Button onClick={handleViewAllSessions}>
-                  Alle {sessions.length} Sessions anzeigen
+                  Alle aktiven Sessions anzeigen
                 </Button>
               </Box>
             )}
