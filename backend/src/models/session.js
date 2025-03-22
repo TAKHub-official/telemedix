@@ -242,12 +242,16 @@ class SessionModel {
     if (status) {
       // Handle array of statuses or single status
       if (Array.isArray(status)) {
-        // For arrays like ['COMPLETED', 'CANCELLED'], create an OR condition
+        // For archived statuses like ['COMPLETED', 'CANCELLED'], show all regardless of doctor
         delete where.OR; // Remove the original OR condition
         where.status = { in: status };
-        where.assignedToId = doctorId; // Only assigned to this doctor for archived sessions
+        // No doctor filter for archived sessions - show all archived sessions
+      } else if (status === 'COMPLETED' || status === 'CANCELLED') {
+        // For completed/cancelled status, show all regardless of doctor
+        delete where.OR;
+        where.status = status;
       } else if (status !== 'OPEN') {
-        // If a specific status is requested (other than OPEN which is already in the OR condition)
+        // If a specific non-archived status is requested (other than OPEN which is already in the OR condition)
         where.status = status;
         delete where.OR; // Remove the OR condition as it would conflict
       }

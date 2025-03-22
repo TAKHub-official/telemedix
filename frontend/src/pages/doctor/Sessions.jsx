@@ -301,12 +301,14 @@ const Sessions = () => {
   
   const getStatusInfo = (status) => {
     switch (status) {
-      case 'PENDING':
-        return { label: 'Wartend', icon: <AccessTimeIcon fontSize="small" />, color: 'warning' };
-      case 'ACTIVE':
-        return { label: 'Aktiv', icon: <CheckCircleIcon fontSize="small" />, color: 'success' };
+      case 'OPEN':
+        return { label: 'Offen', icon: <AccessTimeIcon fontSize="small" />, color: 'warning' };
+      case 'ASSIGNED':
+        return { label: 'Zugewiesen', icon: <CheckCircleIcon fontSize="small" />, color: 'info' };
+      case 'IN_PROGRESS':
+        return { label: 'In Bearbeitung', icon: <CheckCircleIcon fontSize="small" />, color: 'primary' };
       case 'COMPLETED':
-        return { label: 'Abgeschlossen', icon: <CheckCircleIcon fontSize="small" />, color: 'info' };
+        return { label: 'Abgeschlossen', icon: <CheckCircleIcon fontSize="small" />, color: 'success' };
       case 'CANCELLED':
         return { label: 'Abgebrochen', icon: <ErrorIcon fontSize="small" />, color: 'error' };
       default:
@@ -382,10 +384,8 @@ const Sessions = () => {
                 label="Status"
               >
                 <MenuItem value="all">Alle Status</MenuItem>
-                <MenuItem value="PENDING">Wartend</MenuItem>
-                <MenuItem value="ACTIVE">Aktiv</MenuItem>
-                <MenuItem value="COMPLETED">Abgeschlossen</MenuItem>
-                <MenuItem value="CANCELLED">Abgebrochen</MenuItem>
+                <MenuItem value="OPEN">Offen</MenuItem>
+                <MenuItem value="IN_PROGRESS">In Bearbeitung</MenuItem>
               </Select>
             </FormControl>
           </Grid>

@@ -166,8 +166,6 @@ const MedicSessions = () => {
     switch (status) {
       case 'OPEN':
         return <Chip label="Offen" color="warning" size="small" />;
-      case 'ASSIGNED':
-        return <Chip label="Zugewiesen" color="info" size="small" />;
       case 'IN_PROGRESS':
         return <Chip label="In Bearbeitung" color="primary" size="small" />;
       case 'COMPLETED':
@@ -263,7 +261,6 @@ const MedicSessions = () => {
                 >
                   <MenuItem value="">Alle</MenuItem>
                   <MenuItem value="OPEN">Offen</MenuItem>
-                  <MenuItem value="ASSIGNED">Zugewiesen</MenuItem>
                   <MenuItem value="IN_PROGRESS">In Bearbeitung</MenuItem>
                   <MenuItem value="COMPLETED">Abgeschlossen</MenuItem>
                 </Select>

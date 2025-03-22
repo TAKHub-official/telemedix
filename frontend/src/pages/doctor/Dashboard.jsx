@@ -187,6 +187,20 @@ const DoctorDashboard = () => {
     }
   };
 
+  // Get status info
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'OPEN':
+        return { label: 'Offen', icon: <AccessTimeIcon />, color: 'warning' };
+      case 'IN_PROGRESS':
+        return { label: 'In Bearbeitung', icon: <CheckCircleIcon />, color: 'primary' };
+      case 'COMPLETED':
+        return { label: 'Abgeschlossen', icon: <CheckCircleIcon />, color: 'success' };
+      default:
+        return { label: status || 'Unbekannt', icon: null, color: 'default' };
+    }
+  };
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -342,9 +356,12 @@ const DoctorDashboard = () => {
       if (!session) return false;
       
       // Filter based on tab value
-      if (tabValue === 0) return true; // All sessions
-      if (tabValue === 1) return session.status === 'ACTIVE'; // Active
-      if (tabValue === 2) return session.status === 'OPEN'; // Changed from 'PENDING' to 'OPEN'
+      if (tabValue === 0) {
+        // Show only active or open sessions in the dashboard
+        return session.status === 'IN_PROGRESS' || session.status === 'OPEN';
+      }
+      if (tabValue === 1) return session.status === 'IN_PROGRESS'; // Active
+      if (tabValue === 2) return session.status === 'OPEN'; // Open sessions
       return false;
     });
 
@@ -379,11 +396,19 @@ const DoctorDashboard = () => {
                   </Box>
                 }
                 action={
-                  <Chip 
-                    label={getPriorityLabel(session.priority)} 
-                    color={getPriorityColor(session.priority)}
-                    size="small"
-                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Chip 
+                      icon={getStatusInfo(session.status).icon}
+                      label={getStatusInfo(session.status).label}
+                      color={getStatusInfo(session.status).color}
+                      size="small"
+                    />
+                    <Chip 
+                      label={getPriorityLabel(session.priority)} 
+                      color={getPriorityColor(session.priority)}
+                      size="small"
+                    />
+                  </Box>
                 }
               />
               <Divider />
@@ -531,15 +556,15 @@ const DoctorDashboard = () => {
             Aktuelle Sessions
           </Typography>
           <Button onClick={() => navigate('/doctor/sessions')}>
-            Alle anzeigen
+            Alle Sessions anzeigen
           </Button>
         </Box>
         
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="session tabs">
-            <Tab label="Alle" />
-            <Tab label="Aktiv" />
-            <Tab label="Wartend" />
+            <Tab label="Alle aktuellen" />
+            <Tab label="In Bearbeitung" />
+            <Tab label="Offen" />
           </Tabs>
         </Box>
         

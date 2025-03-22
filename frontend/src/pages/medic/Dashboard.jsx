@@ -49,7 +49,7 @@ const MedicDashboard = () => {
         const statsData = {
           total: sessions.length,
           open: sessions.filter(s => s.status === 'OPEN').length,
-          inProgress: sessions.filter(s => ['ASSIGNED', 'IN_PROGRESS'].includes(s.status)).length,
+          inProgress: sessions.filter(s => s.status === 'IN_PROGRESS').length,
           completed: sessions.filter(s => s.status === 'COMPLETED').length
         };
         
@@ -78,8 +78,6 @@ const MedicDashboard = () => {
     switch (status) {
       case 'OPEN':
         return <Chip label="Offen" color="warning" size="small" />;
-      case 'ASSIGNED':
-        return <Chip label="Zugewiesen" color="info" size="small" />;
       case 'IN_PROGRESS':
         return <Chip label="In Bearbeitung" color="primary" size="small" />;
       case 'COMPLETED':

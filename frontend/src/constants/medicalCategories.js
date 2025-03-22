@@ -20,8 +20,7 @@ export const SESSION_CATEGORIES = [
       { value: 'Taktisch - Druckverletzung', label: 'Druckverletzung' },
       { value: 'Taktisch - Crush-Syndrom', label: 'Crush-Syndrom' },
       { value: 'Taktisch - Kompartmentsyndrom', label: 'Kompartmentsyndrom' },
-      { value: 'Taktisch - Urbane Kampfverletzung', label: 'Urbane Kampfverletzung' },
-      { value: 'Taktisch - Remote Damage Control', label: 'Remote Damage Control' },
+      { value: 'Taktisch - Verbrennung', label: 'Verbrennung' },
       { value: 'Taktisch - Prolonged Field Care', label: 'Prolonged Field Care' }
     ]
   },
