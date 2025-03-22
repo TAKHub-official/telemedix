@@ -503,12 +503,14 @@ const Sessions = () => {
                         <TableCell>{session.patientCode || 'Nicht verfügbar'}</TableCell>
                         <TableCell>
                           <Box>
-                            <Typography variant="body2">
-                              {session.title || 'Keine Beschreibung'}
+                            <Typography variant="body2" fontWeight="bold">
+                              {session.title || session.sessionCategory || 'Keine Beschreibung'}
                             </Typography>
-                            {session.medicalRecord?.patientAge && (
+                            {(session.medicalRecord?.patientAge || session.patientCode) && (
                               <Typography variant="caption" color="text.secondary">
-                                {session.medicalRecord.patientAge} Jahre
+                                {session.medicalRecord?.patientAge ? `${session.medicalRecord.patientAge} Jahre` : ''} 
+                                {session.medicalRecord?.patientAge && session.patientCode ? ' • ' : ''}
+                                {session.patientCode ? `ID: ${session.patientCode}` : ''}
                               </Typography>
                             )}
                           </Box>

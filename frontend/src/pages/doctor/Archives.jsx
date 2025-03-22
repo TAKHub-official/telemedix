@@ -81,7 +81,13 @@ const Archives = () => {
     } else {
       const term = searchTerm.toLowerCase();
       const filtered = sessions.filter(session => 
-        session.patientName.toLowerCase().includes(term)
+        (session.title || '').toLowerCase().includes(term) ||
+        (session.sessionCategory || '').toLowerCase().includes(term) ||
+        (session.patientCode || '').toLowerCase().includes(term) ||
+        (session.doctor?.firstName || '').toLowerCase().includes(term) ||
+        (session.doctor?.lastName || '').toLowerCase().includes(term) ||
+        (session.assignedTo?.firstName || '').toLowerCase().includes(term) ||
+        (session.assignedTo?.lastName || '').toLowerCase().includes(term)
       );
       setFilteredSessions(filtered);
     }
@@ -150,6 +156,20 @@ const Archives = () => {
     }
   };
 
+  // Get priority label in German
+  const getPriorityLabel = (priority) => {
+    switch (priority) {
+      case 'HIGH':
+        return 'Hoch';
+      case 'NORMAL':
+        return 'Normal';
+      case 'LOW':
+        return 'Niedrig';
+      default:
+        return priority;
+    }
+  };
+
   // Get status color
   const getStatusColor = (status) => {
     switch (status) {
@@ -208,7 +228,7 @@ const Archives = () => {
       <Paper sx={{ p: 2, mb: 3 }}>
         <TextField
           fullWidth
-          label="Session suchen"
+          label="Nach Titel, Kategorie, ID oder Arzt suchen"
           variant="outlined"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -244,9 +264,9 @@ const Archives = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Session ID</TableCell>
+                  <TableCell>Session</TableCell>
                   <TableCell>Priorität</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell>Behandelnder Arzt</TableCell>
                   <TableCell>Erstellt am</TableCell>
                   <TableCell>Beendet am</TableCell>
                   <TableCell>Dauer</TableCell>
@@ -264,22 +284,30 @@ const Archives = () => {
                   currentSessions.map((session) => (
                     <TableRow key={session.id}>
                       <TableCell>
-                        {session.patientCode || 'Nicht verfügbar'}
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold">
+                            {session.title || session.sessionCategory || 'Unbenannte Session'}
+                          </Typography>
+                          {session.patientCode && (
+                            <Typography variant="caption" color="text.secondary">
+                              ID: {session.patientCode}
+                            </Typography>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={session.priority}
+                          label={getPriorityLabel(session.priority)}
                           color={getPriorityColor(session.priority)}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={session.status === 'COMPLETED' ? 'Abgeschlossen' : 'Abgebrochen'}
-                          color={getStatusColor(session.status)}
-                          size="small"
-                          icon={session.status === 'COMPLETED' ? <CheckCircleIcon /> : null}
-                        />
+                        {session.doctor?.firstName && session.doctor?.lastName 
+                          ? `${session.doctor.firstName} ${session.doctor.lastName}`
+                          : (session.assignedTo?.firstName && session.assignedTo?.lastName 
+                            ? `${session.assignedTo.firstName} ${session.assignedTo.lastName}`
+                            : 'Nicht zugewiesen')}
                       </TableCell>
                       <TableCell>{formatDate(session.createdAt)}</TableCell>
                       <TableCell>{formatDate(session.completedAt)}</TableCell>

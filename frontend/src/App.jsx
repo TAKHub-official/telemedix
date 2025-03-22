@@ -18,11 +18,14 @@ import Sessions from './pages/doctor/Sessions';
 import SessionDetail from './pages/doctor/SessionDetail';
 import Archives from './pages/doctor/Archives';
 import TestPage from './pages/doctor/TestPage';
+import ProfileSettings from './pages/doctor/ProfileSettings';
+import NotificationSettings from './pages/doctor/NotificationSettings';
 import MedicDashboard from './pages/medic/Dashboard';
 import MedicSessions from './pages/medic/Sessions';
 import MedicHistory from './pages/medic/History';
 import NewSession from './pages/medic/NewSession';
 import MedicSessionDetail from './pages/medic/SessionDetail';
+import MedicProfileSettings from './pages/medic/ProfileSettings';
 
 // Simple test page directly included
 const SimplePage = () => (
@@ -93,6 +96,8 @@ function App() {
         <Route path="sessions" element={<Sessions />} />
         <Route path="sessions/:id" element={<SessionDetail />} />
         <Route path="archives" element={<Archives />} />
+        <Route path="profile" element={<ProfileSettings />} />
+        <Route path="settings" element={<NotificationSettings />} />
         <Route index element={<Navigate to="/doctor/dashboard" replace />} />
       </Route>
       
@@ -107,6 +112,7 @@ function App() {
         <Route path="sessions/:id" element={<MedicSessionDetail />} />
         <Route path="history" element={<MedicHistory />} />
         <Route path="new-session" element={<NewSession />} />
+        <Route path="profile" element={<MedicProfileSettings />} />
         <Route index element={<Navigate to="/medic/dashboard" replace />} />
       </Route>
       

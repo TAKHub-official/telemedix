@@ -16,7 +16,11 @@ import {
   Toolbar, 
   Typography, 
   Button,
-  Fab
+  Fab,
+  Avatar,
+  Menu,
+  MenuItem,
+  Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ListAltIcon from '@mui/icons-material/ListAlt';
@@ -24,12 +28,14 @@ import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { logout } from '../../store/slices/authSlice';
 
 const drawerWidth = 240;
 
 function MedicLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -45,6 +51,19 @@ function MedicLayout() {
 
   const handleNewSession = () => {
     navigate('/medic/new-session');
+  };
+
+  const handleUserMenuOpen = (event) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleNavigateToProfile = () => {
+    setUserMenuAnchor(null);
+    navigate('/medic/profile');
   };
 
   const navItems = [
@@ -120,12 +139,66 @@ function MedicLayout() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Medic-Portal
           </Typography>
-          <Typography variant="subtitle1" sx={{ mr: 2 }}>
-            {user?.name || 'Medic'}
-          </Typography>
-          <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />}>
-            Abmelden
-          </Button>
+          
+          {/* User menu */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="subtitle1" sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
+              {user?.firstName || 'Medic'} {user?.lastName || ''}
+            </Typography>
+            <Tooltip title="Benutzermenü">
+              <IconButton 
+                onClick={handleUserMenuOpen}
+                sx={{ 
+                  p: 0,
+                  bgcolor: 'primary.light',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  }
+                }}
+              >
+                <Avatar alt={user?.firstName || 'Medic'}>
+                  {(user?.firstName || 'M')[0].toUpperCase()}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+          </Box>
+          
+          <Menu
+            anchorEl={userMenuAnchor}
+            open={Boolean(userMenuAnchor)}
+            onClose={handleUserMenuClose}
+            PaperProps={{
+              elevation: 0,
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+              },
+            }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem onClick={handleNavigateToProfile}>
+              <ListItemIcon>
+                <AccountCircleIcon fontSize="small" />
+              </ListItemIcon>
+              Mein Profil
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Abmelden
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
       <Box

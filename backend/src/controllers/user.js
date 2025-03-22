@@ -313,11 +313,83 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * Update user notification settings
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const updateUserNotifications = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emailNotificationsEnabled, telegramNotificationsEnabled, email, telegramUsername } = req.body;
+    
+    // Find user by ID
+    const user = await UserModel.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'Benutzer nicht gefunden'
+      });
+    }
+    
+    // Only allow users to update their own notification settings or admins
+    if (req.user.id !== id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Sie können nur Ihre eigenen Benachrichtigungseinstellungen aktualisieren'
+      });
+    }
+    
+    // Build update data
+    const updateData = {
+      emailNotificationsEnabled,
+      telegramNotificationsEnabled,
+    };
+    
+    // Only update email if it's provided
+    if (email) {
+      updateData.notificationEmail = email;
+    }
+    
+    // Only update telegram username if it's provided
+    if (telegramUsername) {
+      updateData.telegramUsername = telegramUsername;
+    }
+    
+    // Update user notification settings
+    const updatedUser = await UserModel.update(id, updateData);
+    
+    // Log notification settings update
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    await AuditLogModel.logDataEvent(
+      req.user.id,
+      'UPDATE',
+      'USER',
+      id,
+      `Benachrichtigungseinstellungen aktualisiert für: ${updatedUser.firstName} ${updatedUser.lastName}`,
+      ipAddress
+    );
+    
+    // Return success with updated user data
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    
+    res.status(200).json({
+      message: 'Benachrichtigungseinstellungen erfolgreich aktualisiert',
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Update user notification settings error:', error);
+    res.status(500).json({ 
+      message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   createUser,
   updateUser,
   changeUserRole,
-  deleteUser
+  deleteUser,
+  updateUserNotifications
 }; 

@@ -64,6 +64,16 @@ function DoctorLayout() {
     setUserMenuAnchor(null);
   };
 
+  const handleNavigateToProfile = () => {
+    setUserMenuAnchor(null);
+    navigate('/doctor/profile');
+  };
+
+  const handleNavigateToSettings = () => {
+    setUserMenuAnchor(null);
+    navigate('/doctor/settings');
+  };
+
   const handleNotificationMenuOpen = (event) => {
     setNotificationMenuAnchor(event.currentTarget);
   };
@@ -201,7 +211,7 @@ function DoctorLayout() {
           {/* User menu */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="subtitle1" sx={{ mr: 1, display: { xs: 'none', sm: 'block' } }}>
-              {user?.name || 'Arzt'}
+              {user?.firstName || 'Arzt'} {user?.lastName || ''}
             </Typography>
             <Tooltip title="Benutzermenü">
               <IconButton 
@@ -215,8 +225,8 @@ function DoctorLayout() {
                   }
                 }}
               >
-                <Avatar alt={user?.name || 'Arzt'}>
-                  {(user?.name || 'A')[0].toUpperCase()}
+                <Avatar alt={user?.firstName || 'Arzt'}>
+                  {(user?.firstName || 'A')[0].toUpperCase()}
                 </Avatar>
               </IconButton>
             </Tooltip>
@@ -243,13 +253,13 @@ function DoctorLayout() {
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            <MenuItem onClick={handleUserMenuClose}>
+            <MenuItem onClick={handleNavigateToProfile}>
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
               Mein Profil
             </MenuItem>
-            <MenuItem onClick={handleUserMenuClose}>
+            <MenuItem onClick={handleNavigateToSettings}>
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
               </ListItemIcon>

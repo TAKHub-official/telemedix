@@ -84,6 +84,7 @@ const usersAPI = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   changeRole: (id, role) => api.put(`/users/${id}/role`, { role }),
+  updateNotificationSettings: (id, settings) => api.put(`/users/${id}/notifications`, settings),
 };
 
 // Admin API
