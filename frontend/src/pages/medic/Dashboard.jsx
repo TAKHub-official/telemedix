@@ -199,7 +199,7 @@ const MedicDashboard = () => {
       {/* Recent Sessions */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" component="h2" gutterBottom>
-          Aktuelle Sessions (offen oder in Bearbeitung)
+          Aktuelle Sessions
         </Typography>
         
         {loading ? (
