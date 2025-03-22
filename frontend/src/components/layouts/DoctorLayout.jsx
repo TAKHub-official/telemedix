@@ -84,7 +84,7 @@ function DoctorLayout() {
 
   const navItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/doctor/dashboard' },
-    { text: 'Aktive Sessions', icon: <ListAltIcon />, path: '/doctor/sessions' },
+    { text: 'Meine Sessions', icon: <ListAltIcon />, path: '/doctor/sessions' },
     { text: 'Archivierte Sessions', icon: <HistoryIcon />, path: '/doctor/archives' },
   ];
 
@@ -225,8 +225,11 @@ function DoctorLayout() {
                   }
                 }}
               >
-                <Avatar alt={user?.firstName || 'Arzt'}>
-                  {(user?.firstName || 'A')[0].toUpperCase()}
+                <Avatar 
+                  src={user?.profileImageUrl || ''} 
+                  alt={user?.firstName || 'Arzt'}
+                >
+                  {!user?.profileImageUrl && (user?.firstName || 'A')[0].toUpperCase()}
                 </Avatar>
               </IconButton>
             </Tooltip>

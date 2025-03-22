@@ -419,15 +419,6 @@ const Sessions = () => {
                 <TableRow>
                   <TableCell>
                     <TableSortLabel
-                      active={orderBy === 'patientCode'}
-                      direction={orderBy === 'patientCode' ? order : 'asc'}
-                      onClick={() => handleRequestSort('patientCode')}
-                    >
-                      Session-ID
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel
                       active={orderBy === 'title'}
                       direction={orderBy === 'title' ? order : 'asc'}
                       onClick={() => handleRequestSort('title')}
@@ -477,7 +468,7 @@ const Sessions = () => {
               <TableBody>
                 {paginatedSessions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={6} align="center">
                       <Typography variant="body1" p={3}>
                         Keine Sessions gefunden
                       </Typography>
@@ -500,7 +491,6 @@ const Sessions = () => {
                         }}
                         onClick={() => handleViewSession(session.id)}
                       >
-                        <TableCell>{session.patientCode || 'Nicht verfügbar'}</TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">

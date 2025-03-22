@@ -140,7 +140,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, role, status, password } = req.body;
+    const { firstName, lastName, role, status, password, email } = req.body;
     
     // Find user by ID
     const user = await UserModel.findById(id);
@@ -163,6 +163,14 @@ const updateUser = async (req, res) => {
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
     if (password) updateData.password = password;
+    if (email) updateData.email = email;
+    
+    // Handle profile image if uploaded
+    if (req.file) {
+      // Get the path to the uploaded file
+      const profileImageUrl = `/uploads/profile-images/${req.file.filename}`;
+      updateData.profileImageUrl = profileImageUrl;
+    }
     
     // Only admins can change roles and status
     if (req.user.role === 'ADMIN') {

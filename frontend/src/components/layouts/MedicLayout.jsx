@@ -157,8 +157,11 @@ function MedicLayout() {
                   }
                 }}
               >
-                <Avatar alt={user?.firstName || 'Medic'}>
-                  {(user?.firstName || 'M')[0].toUpperCase()}
+                <Avatar 
+                  src={user?.profileImageUrl || ''} 
+                  alt={user?.firstName || 'Medic'}
+                >
+                  {!user?.profileImageUrl && (user?.firstName || 'M')[0].toUpperCase()}
                 </Avatar>
               </IconButton>
             </Tooltip>

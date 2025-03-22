@@ -19,9 +19,10 @@ import {
   PhotoCamera as PhotoCameraIcon,
   KeyboardArrowLeft as BackIcon
 } from '@mui/icons-material';
-import { changePassword } from '../../store/slices/authSlice';
+import { changePassword, updateUser } from '../../store/slices/authSlice';
 import { usersAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import ImageCropper from '../../components/ImageCropper';
 
 const ProfileSettings = () => {
   const dispatch = useDispatch();
@@ -42,6 +43,8 @@ const ProfileSettings = () => {
   
   const [profileImage, setProfileImage] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [originalImage, setOriginalImage] = useState(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -83,9 +86,28 @@ const ProfileSettings = () => {
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setProfileImage(file);
-      setProfileImagePreview(URL.createObjectURL(file));
+      // Only accept JPEG or PNG files
+      if (!file.type.includes('jpeg') && !file.type.includes('jpg') && !file.type.includes('png')) {
+        setNotification({
+          open: true,
+          message: 'Nur JPEG und PNG Dateien werden unterstützt',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Show cropper dialog
+      const imageUrl = URL.createObjectURL(file);
+      setProfileImagePreview(imageUrl);
+      setOriginalImage(imageUrl);
+      setCropperOpen(true);
     }
+  };
+
+  // Handle cropper complete
+  const handleCropComplete = (cropData) => {
+    setProfileImage(cropData.file);
+    setProfileImagePreview(cropData.preview);
   };
 
   // Validate password form
@@ -153,7 +175,12 @@ const ProfileSettings = () => {
       }
       
       // Update user profile
-      await usersAPI.update(user.id, formData);
+      const response = await usersAPI.update(user.id, formData);
+      
+      // Update user in Redux state
+      if (response.data && response.data.user) {
+        dispatch(updateUser(response.data.user));
+      }
       
       setNotification({
         open: true,
@@ -229,18 +256,23 @@ const ProfileSettings = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Button
-        startIcon={<BackIcon />}
-        onClick={handleBack}
-        sx={{ mb: 2 }}
-      >
-        Zurück zum Dashboard
-      </Button>
-      
-      <Typography variant="h4" gutterBottom>
-        Profileinstellungen
-      </Typography>
-      
+      <Box display="flex" alignItems="center" mb={3}>
+        <IconButton onClick={handleBack} sx={{ mr: 1 }}>
+          <BackIcon />
+        </IconButton>
+        <Typography variant="h4" component="h1">
+          Profil-Einstellungen
+        </Typography>
+      </Box>
+
+      {/* Image cropper dialog */}
+      <ImageCropper
+        open={cropperOpen}
+        onClose={() => setCropperOpen(false)}
+        image={originalImage}
+        onCropComplete={handleCropComplete}
+      />
+
       <Grid container spacing={3}>
         {/* Profile Info */}
         <Grid item xs={12} md={6}>

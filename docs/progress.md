@@ -81,8 +81,8 @@
    - ✅ Dashboard mit Statistiken und Session-Übersicht
    - ✅ Sessions-Verwaltung (Liste, Suche, Filter)
    - ✅ Session-Detailansicht
+   - ✅ Vitalwerte-Visualisierung
    - ⏩ Behandlungsplan-Erstellung und -Bearbeitung
-   - ⏩ Vitalwerte-Visualisierung
 3. Medic-Bereich (teilweise abgeschlossen)
    - ✅ Anamnesebogen-Erfassung
    - ✅ Session-Erstellung
@@ -153,21 +153,15 @@
 
 ## Letzte Änderungen
 
-### 2023-06-XX: Session-Abschluss und Behandlungsplan-Fixes
-- ✅ Behobene Probleme:
-  - JSON-Parsing-Fehler bei der Verarbeitung von Patientendaten behoben
-  - Zugriffsbeschränkungen für Ärzte in der Session-Steuerung verbessert
-  - Automatische Erstellung von Behandlungsplänen für zugewiesene Ärzte implementiert
-  - Fehlerbehandlung beim Abschließen von Sessions verbessert
-  - 403/404-Fehler beim Zugriff auf Behandlungspläne behoben
-
-- ✅ Implementierte Verbesserungen:
-  - Robuste JSON-Parsing-Funktion für Patientendaten hinzugefügt
-  - Fehlerbehandlung für fehlende Behandlungspläne verbessert
-  - Automatische Erstellung von Behandlungsplänen, wenn Ärzte Sessions annehmen
-  - Verbesserte Sitzungszuweisung mit DoctorID-Behandlung
-  - Stufenweiser Session-Abschluss-Prozess (IN_PROGRESS → COMPLETED)
-  - Benachrichtigungssystem für Behandlungsplan-Updates verbessert 
+### 2023-08-XX: Verbesserungen für das Arzt-Dashboard
+- ✅ Anpassungen im Arzt-Interface:
+  - DoctorLayout zeigt jetzt den vollständigen Namen des Arztes anstelle von "Arzt"
+  - Session-Titel werden in der Dashboard-Ansicht hervorgehoben angezeigt anstatt der Session-ID
+  - In der Sessions-Übersicht wird der Session-Titel als Hauptinformation dargestellt
+  - Session-Metadaten (Alter, ID) werden als untergeordnete Informationen angezeigt
+  - In der Archiv-Ansicht wurde die Status-Spalte entfernt und durch "Behandelnder Arzt" ersetzt
+  - Prioritätsbezeichnungen werden auf Deutsch angezeigt ("Hoch", "Normal", "Niedrig")
+  - Die Suchfunktion in den Archiven ermöglicht jetzt die Suche nach Titel, Kategorie, ID oder Arzt
 
 ### 2023-07-XX: UI-Verbesserungen und Systemanpassungen
 - ✅ Implementierte Änderungen:

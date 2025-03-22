@@ -91,8 +91,9 @@ const getSessionById = async (req, res) => {
     
     // Check if user has access to this session
     if (req.user.role === 'DOCTOR') {
-      // Doctors can view sessions assigned to them OR sessions with status='OPEN'
-      if (session.assignedToId !== req.user.id && session.status !== 'OPEN') {
+      // Doctors can view sessions assigned to them OR sessions with status='OPEN' OR archived sessions
+      if (session.assignedToId !== req.user.id && session.status !== 'OPEN' && 
+          session.status !== 'COMPLETED' && session.status !== 'CANCELLED') {
         // Special case: If the session is IN_PROGRESS and assigned to this doctor, allow access
         if (session.status === 'IN_PROGRESS' && req.user.id === session.assignedToId) {
           // Allow access - this doctor is handling the session

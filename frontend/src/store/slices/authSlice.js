@@ -186,6 +186,9 @@ const authSlice = createSlice({
     },
     clearPasswordChanged: (state) => {
       state.passwordChanged = false;
+    },
+    updateUser: (state, action) => {
+      state.user = action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -244,5 +247,5 @@ const authSlice = createSlice({
   }
 });
 
-export const { clearError, clearPasswordChanged } = authSlice.actions;
+export const { clearError, clearPasswordChanged, updateUser } = authSlice.actions;
 export default authSlice.reducer; 

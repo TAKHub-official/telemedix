@@ -232,7 +232,7 @@ const DoctorDashboard = () => {
                   </Typography>
                 )}
                 <Typography variant="body2" color="text.secondary">
-                  Aktive Sessions
+                  Meine Sessions
                 </Typography>
               </Box>
             </Box>
@@ -553,7 +553,7 @@ const DoctorDashboard = () => {
       <Box sx={{ mt: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h5" component="h2" gutterBottom>
-            Aktuelle Sessions
+            Meine Sessions
           </Typography>
           <Button onClick={() => navigate('/doctor/sessions')}>
             Alle Sessions anzeigen
