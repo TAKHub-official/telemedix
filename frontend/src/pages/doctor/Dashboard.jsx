@@ -130,11 +130,21 @@ const DoctorDashboard = () => {
       console.log('Assigning session to doctor ID:', doctorId);
       
       // Assign the session to the current doctor
-      // Make sure we're passing the doctorId parameter correctly
-      await sessionsAPI.assign(sessionId, doctorId);
+      const assignResult = await sessionsAPI.assign(sessionId, doctorId);
+      console.log('Session assign result:', assignResult);
+      
+      if (assignResult) {
+        // Immediately set status to IN_PROGRESS (skip ASSIGNED state)
+        console.log('Updating session status to IN_PROGRESS...');
+        const updateResult = await sessionsAPI.update(sessionId, { status: 'IN_PROGRESS' });
+        console.log('Session update result:', updateResult);
+      }
       
       // Refresh data
       await loadDashboardData();
+      
+      // Navigate to session detail
+      navigate(`/doctor/sessions/${sessionId}`);
       
     } catch (err) {
       console.error('Error accepting session:', err);
@@ -154,8 +164,8 @@ const DoctorDashboard = () => {
     switch (priority) {
       case 'HIGH':
         return 'error';
-      case 'MEDIUM':
-        return 'warning';
+      case 'NORMAL':
+        return 'info';
       case 'LOW':
         return 'success';
       default:
@@ -168,8 +178,8 @@ const DoctorDashboard = () => {
     switch (priority) {
       case 'HIGH':
         return 'Hoch';
-      case 'MEDIUM':
-        return 'Mittel';
+      case 'NORMAL':
+        return 'Normal';
       case 'LOW':
         return 'Niedrig';
       default:
@@ -395,21 +405,42 @@ const DoctorDashboard = () => {
                       } catch (e) {
                         console.error('Failed to parse patient history:', e);
                       }
+                    } else if (session.patientHistory) {
+                      try {
+                        if (typeof session.patientHistory === 'string') {
+                          patientData = JSON.parse(session.patientHistory);
+                        } else {
+                          patientData = session.patientHistory;
+                        }
+                      } catch (e) {
+                        console.error('Failed to parse patient history:', e);
+                      }
                     }
+                    
+                    // Extract personal info if available
+                    const personalInfo = patientData.personalInfo || {};
+                    
+                    // Get age from multiple possible sources
+                    const patientAge = personalInfo.age || patientData.age || (session.patientCode ? parseInt(session.patientCode.split('-')[1]) : null) || 'Unbekannt';
+                    
+                    // Standardize gender display
+                    let patientGender = personalInfo.gender || patientData.gender || 'Nicht angegeben';
+                    if (patientGender === 'MALE') patientGender = 'Männlich';
+                    if (patientGender === 'FEMALE') patientGender = 'Weiblich';
                     
                     return (
                       <>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          <strong>Alter:</strong> {patientData.age || 'Unbekannt'} Jahre
+                          <strong>Alter:</strong> {typeof patientAge === 'number' ? `${patientAge} Jahre` : patientAge}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          <strong>Geschlecht:</strong> {patientData.gender || 'Nicht angegeben'}
+                          <strong>Geschlecht:</strong> {patientGender}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          <strong>Medic:</strong> {session.createdBy?.name || 'Nicht zugewiesen'}
+                          <strong>Medic:</strong> {session.createdBy?.firstName ? `${session.createdBy.firstName} ${session.createdBy.lastName || ''}` : 'Nicht zugewiesen'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          <strong>Hauptbeschwerde:</strong> {patientData.chiefComplaint || 'Keine Angaben'}
+                          <strong>Hauptbeschwerde:</strong> {personalInfo.chiefComplaint || patientData.chiefComplaint || 'Keine Angaben'}
                         </Typography>
                       </>
                     );

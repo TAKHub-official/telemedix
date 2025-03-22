@@ -143,7 +143,15 @@ const Sessions = () => {
       console.log('Assigning session to doctor ID:', doctorId);
       
       // Assign session to the current doctor using the assign API endpoint
-      await sessionsAPI.assign(id, doctorId);
+      const assignResult = await sessionsAPI.assign(id, doctorId);
+      console.log('Session assign result:', assignResult);
+      
+      if (assignResult) {
+        // Immediately set status to IN_PROGRESS (skip ASSIGNED state)
+        console.log('Updating session status to IN_PROGRESS...');
+        const updateResult = await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+        console.log('Session update result:', updateResult);
+      }
       
       // Reload sessions after successful update
       await loadSessions();
@@ -151,7 +159,7 @@ const Sessions = () => {
       // Show success notification
       setNotification({
         open: true,
-        message: 'Session erfolgreich übernommen',
+        message: 'Session erfolgreich übernommen und gestartet',
         severity: 'success'
       });
       
@@ -269,8 +277,8 @@ const Sessions = () => {
     switch (priority) {
       case 'HIGH':
         return 'error';
-      case 'MEDIUM':
-        return 'warning';
+      case 'NORMAL':
+        return 'info';
       case 'LOW':
         return 'success';
       default:
@@ -282,8 +290,8 @@ const Sessions = () => {
     switch (priority) {
       case 'HIGH':
         return 'Hoch';
-      case 'MEDIUM':
-        return 'Mittel';
+      case 'NORMAL':
+        return 'Normal';
       case 'LOW':
         return 'Niedrig';
       default:
@@ -391,7 +399,7 @@ const Sessions = () => {
               >
                 <MenuItem value="all">Alle Prioritäten</MenuItem>
                 <MenuItem value="HIGH">Hoch</MenuItem>
-                <MenuItem value="MEDIUM">Mittel</MenuItem>
+                <MenuItem value="NORMAL">Normal</MenuItem>
                 <MenuItem value="LOW">Niedrig</MenuItem>
               </Select>
             </FormControl>

@@ -141,8 +141,8 @@ const Archives = () => {
     switch (priority) {
       case 'HIGH':
         return 'error';
-      case 'MEDIUM':
-        return 'warning';
+      case 'NORMAL':
+        return 'info';
       case 'LOW':
         return 'success';
       default:

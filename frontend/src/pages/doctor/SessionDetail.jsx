@@ -13,49 +13,24 @@ import {
   Card,
   CardContent,
   CardHeader,
-  TextField,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Stepper,
-  Step,
-  StepLabel,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Tabs,
-  Tab,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
-  Add as AddIcon,
-  Delete as DeleteIcon,
   Refresh as RefreshIcon,
-  ExpandMore as ExpandMoreIcon,
-  MedicalServices as MedicalServicesIcon,
   AccessTime as AccessTimeIcon,
   Error as ErrorIcon,
-  Save as SaveIcon,
-  Send as SendIcon,
   Thermostat as ThermostatIcon,
   MonitorHeart as MonitorHeartIcon,
   Bloodtype as BloodtypeIcon,
   Air as AirIcon,
-  Visibility as VisibilityIcon,
   WaterDrop as WaterDropIcon,
-  Warning as WarningIcon,
   Speed as SpeedIcon
 } from '@mui/icons-material';
-import { sessionsAPI, treatmentPlansAPI } from '../../services/api';
+import { sessionsAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Safe parsing of JSON data
@@ -86,15 +61,9 @@ const SessionDetail = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [treatmentPlan, setTreatmentPlan] = useState(null);
-  const [treatmentSteps, setTreatmentSteps] = useState([]);
   const [tabValue, setTabValue] = useState(0);
-  const [newStep, setNewStep] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [diagnosis, setDiagnosis] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
-  
   const [user, setUser] = useState(null);
   
   // Fetch session data
@@ -134,37 +103,6 @@ const SessionDetail = () => {
         const userData = JSON.parse(localStorage.getItem('user'));
         setUser(userData);
         
-        // Load treatment plan if this is a doctor viewing
-        if (userData?.role === 'DOCTOR') {
-          try {
-            console.log('Fetching treatment plan for session:', id);
-            const result = await treatmentPlansAPI.getBySessionId(id);
-            console.log('Treatment plan response:', result);
-            
-            // Handle treatment plan response variants
-            let treatmentPlanData = null;
-            if (result && result.data && result.data.treatmentPlan) {
-              // Structure: { data: { treatmentPlan: {...} } }
-              treatmentPlanData = result.data.treatmentPlan;
-            } else if (result && result.treatmentPlan) {
-              // Structure: { treatmentPlan: {...} }
-              treatmentPlanData = result.treatmentPlan;
-            }
-            
-            if (treatmentPlanData) {
-              console.log('Treatment plan extracted:', treatmentPlanData);
-              setTreatmentPlan(treatmentPlanData);
-              
-              // Set additional data
-              setDiagnosis(treatmentPlanData.diagnosis || '');
-              setTreatmentSteps(treatmentPlanData.steps || []);
-            }
-          } catch (tpError) {
-            console.error('Error loading treatment plan:', tpError);
-            // Keine Fehlermeldung für 404, da möglicherweise noch kein Plan existiert
-          }
-        }
-        
         // Clear any previous errors
         setError(null);
       } else {
@@ -183,169 +121,6 @@ const SessionDetail = () => {
     setTabValue(newValue);
   };
   
-  const handleAddStep = async () => {
-    if (newStep.trim() === '') return;
-    
-    try {
-      setLoading(true);
-      
-      // If treatment plan doesn't exist yet, create it first
-      if (!treatmentPlan) {
-        const createPlanResponse = await treatmentPlansAPI.create(id, {
-          diagnosis,
-          steps: [{ description: newStep }]
-        });
-        
-        if (createPlanResponse && createPlanResponse.data && createPlanResponse.data.treatmentPlan) {
-          setTreatmentPlan(createPlanResponse.data.treatmentPlan);
-          setTreatmentSteps(createPlanResponse.data.treatmentPlan.steps || []);
-          setNewStep('');
-          setError(null);
-        }
-      } else {
-        // Add step to existing treatment plan
-        const addStepResponse = await treatmentPlansAPI.addStep(treatmentPlan.id, newStep);
-        
-        if (addStepResponse && addStepResponse.data && addStepResponse.data.step) {
-          // Add the new step to our state
-          setTreatmentSteps([...treatmentSteps, addStepResponse.data.step]);
-          setNewStep('');
-          setError(null);
-        }
-      }
-    } catch (err) {
-      console.error('Error adding step:', err);
-      setError('Fehler beim Hinzufügen des Schritts. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleDeleteStep = async (stepId) => {
-    try {
-      setLoading(true);
-      
-      // Call API to delete the step
-      await treatmentPlansAPI.deleteStep(stepId);
-      
-      // Update local state
-      setTreatmentSteps(treatmentSteps.filter(step => step.id !== stepId));
-      setError(null);
-    } catch (err) {
-      console.error('Error deleting step:', err);
-      setError('Fehler beim Löschen des Schritts. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleUpdateDiagnosis = async () => {
-    try {
-      setLoading(true);
-      
-      // If treatment plan doesn't exist yet, create it
-      if (!treatmentPlan) {
-        const createPlanResponse = await treatmentPlansAPI.create(id, {
-          diagnosis
-        });
-        
-        if (createPlanResponse && createPlanResponse.data && createPlanResponse.data.treatmentPlan) {
-          setTreatmentPlan(createPlanResponse.data.treatmentPlan);
-          setError(null);
-        }
-      } else {
-        // Update existing treatment plan diagnosis
-        const updateResponse = await treatmentPlansAPI.update(treatmentPlan.id, {
-          diagnosis
-        });
-        
-        if (updateResponse && updateResponse.data && updateResponse.data.treatmentPlan) {
-          setTreatmentPlan(updateResponse.data.treatmentPlan);
-          setError(null);
-        }
-      }
-    } catch (err) {
-      console.error('Error updating diagnosis:', err);
-      setError('Fehler beim Aktualisieren der Diagnose. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSaveTreatmentPlan = async () => {
-    try {
-      setLoading(true);
-      
-      // If the treatment plan already exists, just fetch it again
-      // since we can't set the status field yet
-      if (treatmentPlan) {
-        // Reload treatment plan data
-        await loadSessionData();
-        setError(null);
-      } else {
-        // If the treatment plan doesn't exist and there are steps, create it
-        if (treatmentSteps.length > 0) {
-          const createResponse = await treatmentPlansAPI.create(id, {
-            diagnosis,
-            steps: treatmentSteps
-          });
-          
-          if (createResponse && createResponse.data && createResponse.data.treatmentPlan) {
-            setTreatmentPlan(createResponse.data.treatmentPlan);
-            setError(null);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error saving treatment plan:', err);
-      setError('Fehler beim Speichern des Behandlungsplans. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSendTreatmentPlan = () => {
-    // Open confirmation dialog before sending
-    setDialogOpen(true);
-  };
-  
-  const confirmSendTreatmentPlan = async () => {
-    try {
-      setLoading(true);
-      setDialogOpen(false);
-      
-      // If the treatment plan exists, we would normally update its status to ACTIVE here
-      // but since we don't have that field yet, we'll just fetch it again
-      if (treatmentPlan) {
-        // Reload treatment plan data
-        await loadSessionData();
-        setError(null);
-      } else {
-        // If the treatment plan doesn't exist and there are steps, create it
-        if (treatmentSteps.length > 0) {
-          const createResponse = await treatmentPlansAPI.create(id, {
-            diagnosis,
-            steps: treatmentSteps
-          });
-          
-          if (createResponse && createResponse.data && createResponse.data.treatmentPlan) {
-            setTreatmentPlan(createResponse.data.treatmentPlan);
-            setError(null);
-          }
-        } else {
-          setError('Der Behandlungsplan muss mindestens einen Schritt enthalten.');
-          setLoading(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.error('Error sending treatment plan:', err);
-      setError('Fehler beim Senden des Behandlungsplans. Bitte versuchen Sie es später erneut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const handleRefresh = () => {
     loadSessionData();
   };
@@ -354,8 +129,8 @@ const SessionDetail = () => {
     switch (priority) {
       case 'HIGH':
         return 'error';
-      case 'MEDIUM':
-        return 'warning';
+      case 'NORMAL':
+        return 'info';
       case 'LOW':
         return 'success';
       default:
@@ -367,8 +142,8 @@ const SessionDetail = () => {
     switch (priority) {
       case 'HIGH':
         return 'Hoch';
-      case 'MEDIUM':
-        return 'Mittel';
+      case 'NORMAL':
+        return 'Normal';
       case 'LOW':
         return 'Niedrig';
       default:
@@ -378,14 +153,14 @@ const SessionDetail = () => {
   
   const getStatusInfo = (status) => {
     switch (status) {
-      case 'PENDING':
-        return { label: 'Wartend', icon: <AccessTimeIcon />, color: 'warning' };
-      case 'ACTIVE':
-        return { label: 'Aktiv', icon: <CheckCircleIcon />, color: 'success' };
+      case 'OPEN':
+        return { label: 'Offen', icon: <AccessTimeIcon />, color: 'warning' };
+      case 'ASSIGNED':
+        return { label: 'Zugewiesen', icon: <CheckCircleIcon />, color: 'info' };
+      case 'IN_PROGRESS':
+        return { label: 'In Bearbeitung', icon: <CheckCircleIcon />, color: 'primary' };
       case 'COMPLETED':
-        return { label: 'Abgeschlossen', icon: <CheckCircleIcon />, color: 'info' };
-      case 'CANCELLED':
-        return { label: 'Abgebrochen', icon: <ErrorIcon />, color: 'error' };
+        return { label: 'Abgeschlossen', icon: <CheckCircleIcon />, color: 'success' };
       default:
         return { label: status || 'Unbekannt', icon: null, color: 'default' };
     }
@@ -404,8 +179,35 @@ const SessionDetail = () => {
     });
   };
   
+  const getVitalSignIcon = (type) => {
+    switch (type) {
+      case 'TEMPERATURE':
+        return <ThermostatIcon color="error" />;
+      case 'HEART_RATE':
+        return <MonitorHeartIcon color="error" />;
+      case 'BLOOD_PRESSURE':
+        return <BloodtypeIcon color="error" />;
+      case 'OXYGEN_SATURATION':
+        return <AirIcon color="primary" />;
+      case 'RESPIRATORY_RATE':
+        return <SpeedIcon color="primary" />;
+      case 'HYDRATION':
+        return <WaterDropIcon color="primary" />;
+      case 'BLOOD_GLUCOSE':
+        return <BloodtypeIcon color="success" />;
+      case 'PAIN_LEVEL':
+        return <ErrorIcon color="error" />;
+      case 'CONSCIOUSNESS':
+        return <AccessTimeIcon color="info" />;
+      default:
+        return null;
+    }
+  };
+  
   const formatVitalSignType = (type) => {
     switch (type) {
+      case 'TEMPERATURE':
+        return 'Temperatur';
       case 'HEART_RATE':
         return 'Herzfrequenz';
       case 'BLOOD_PRESSURE':
@@ -414,8 +216,8 @@ const SessionDetail = () => {
         return 'Sauerstoffsättigung';
       case 'RESPIRATORY_RATE':
         return 'Atemfrequenz';
-      case 'TEMPERATURE':
-        return 'Temperatur';
+      case 'HYDRATION':
+        return 'Flüssigkeitshaushalt';
       case 'BLOOD_GLUCOSE':
         return 'Blutzucker';
       case 'PAIN_LEVEL':
@@ -423,78 +225,44 @@ const SessionDetail = () => {
       case 'CONSCIOUSNESS':
         return 'Bewusstsein';
       default:
-        return type.replace(/_/g, ' ');
-    }
-  };
-  
-  const getVitalSignIcon = (type) => {
-    switch (type) {
-      case 'HEART_RATE':
-        return <MonitorHeartIcon color="error" />;
-      case 'BLOOD_PRESSURE':
-        return <SpeedIcon color="primary" />;
-      case 'OXYGEN_SATURATION':
-        return <WaterDropIcon color="info" />;
-      case 'RESPIRATORY_RATE':
-        return <AirIcon color="warning" />;
-      case 'TEMPERATURE':
-        return <ThermostatIcon color="secondary" />;
-      case 'BLOOD_GLUCOSE':
-        return <BloodtypeIcon color="success" />;
-      case 'PAIN_LEVEL':
-        return <WarningIcon color="error" />;
-      case 'CONSCIOUSNESS':
-        return <VisibilityIcon color="info" />;
-      default:
-        return <MedicalServicesIcon color="default" />;
+        return type;
     }
   };
   
   const renderVitalSignsChart = () => {
     if (!session || !session.vitalSigns || session.vitalSigns.length === 0) {
       return (
-        <Typography variant="body1">Keine Vitalwerte verfügbar</Typography>
+        <Card>
+          <CardHeader title="Vitalwerte" />
+          <Divider />
+          <CardContent>
+            <Typography variant="body1">Keine Vitalwerte verfügbar</Typography>
+          </CardContent>
+        </Card>
       );
     }
-
+    
     // Group vital signs by type
     const vitalSignsByType = {};
-    
-    // Sort vital signs by timestamp
-    const sortedVitalSigns = [...session.vitalSigns].sort((a, b) => 
-      new Date(a.timestamp || a.createdAt) - new Date(b.timestamp || b.createdAt)
-    );
-    
-    // Group vital signs by type
-    sortedVitalSigns.forEach(sign => {
+    session.vitalSigns.forEach(sign => {
       if (!vitalSignsByType[sign.type]) {
         vitalSignsByType[sign.type] = [];
       }
-      // Add formatted time for chart display
-      const date = new Date(sign.timestamp || sign.createdAt);
-      const formattedTime = date.toLocaleTimeString('de-DE', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
       vitalSignsByType[sign.type].push({
         ...sign,
-        time: formattedTime,
-        value: sign.value,
-        originalDate: sign.timestamp || sign.createdAt,
+        time: formatDate(sign.timestamp || sign.createdAt)
       });
     });
-
-    // Create chart components for each vital sign type that has 2+ values
+    
     return (
       <Grid container spacing={3}>
-        {Object.keys(vitalSignsByType).map(type => {
-          const signs = vitalSignsByType[type];
+        {Object.entries(vitalSignsByType).map(([type, signs]) => {
           const chartTitle = formatVitalSignType(type);
           
-          // Convert values to numbers if possible for charts
+          // Process data for charting
           signs.forEach(sign => {
-            if (type === 'BLOOD_PRESSURE' && sign.value.includes('/')) {
+            // Special handling for blood pressure
+            if (type === 'BLOOD_PRESSURE' && sign.value) {
               const [systolic, diastolic] = sign.value.split('/');
               sign.systolic = parseInt(systolic, 10);
               sign.diastolic = parseInt(diastolic, 10);
@@ -630,17 +398,11 @@ const SessionDetail = () => {
     
     // Safely get patient age and gender
     const patientAge = personalInfo.age || patientHistory.age || (session.patientCode ? parseInt(session.patientCode.split('-')[1]) : null) || 'Nicht angegeben';
-    const patientGender = personalInfo.gender || patientHistory.gender || 'Nicht angegeben';
     
-    // Extract symptoms - checking multiple possible locations
-    let symptoms = [];
-    if (Array.isArray(patientHistory.symptoms)) {
-      symptoms = patientHistory.symptoms;
-    } else if (patientHistory.mainSymptoms) {
-      symptoms = Array.isArray(patientHistory.mainSymptoms) ? patientHistory.mainSymptoms : [patientHistory.mainSymptoms];
-    } else if (session.symptoms) {
-      symptoms = Array.isArray(session.symptoms) ? session.symptoms : [session.symptoms];
-    }
+    // Standardize the gender format - always use 'Männlich' or 'Weiblich'
+    let patientGender = personalInfo.gender || patientHistory.gender || 'Nicht angegeben';
+    if (patientGender === 'MALE') patientGender = 'Männlich';
+    if (patientGender === 'FEMALE') patientGender = 'Weiblich';
     
     // Get latest vital signs for display
     const latestVitalSigns = [];
@@ -715,19 +477,6 @@ const SessionDetail = () => {
               <Typography variant="body1">{session.createdBy?.firstName ? `${session.createdBy.firstName} ${session.createdBy.lastName}` : 'Nicht zugewiesen'}</Typography>
             </Grid>
             
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">Symptome</Typography>
-              {symptoms.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                  {symptoms.map((symptom, index) => (
-                    <Chip key={index} label={symptom} size="small" color="primary" variant="outlined" />
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body1">Keine Symptome angegeben</Typography>
-              )}
-            </Grid>
-            
             {/* Vital signs in patient info */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>Aktuelle Vitalwerte</Typography>
@@ -800,301 +549,107 @@ const SessionDetail = () => {
       }
     }
     
-    const personalInfo = patientHistory.personalInfo || {};
-    
-    // Extract symptoms - checking multiple possible locations
-    let symptoms = [];
-    if (Array.isArray(patientHistory.symptoms)) {
-      symptoms = patientHistory.symptoms;
-    } else if (patientHistory.mainSymptoms) {
-      symptoms = Array.isArray(patientHistory.mainSymptoms) ? patientHistory.mainSymptoms : [patientHistory.mainSymptoms];
-    } else if (session.symptoms) {
-      symptoms = Array.isArray(session.symptoms) ? session.symptoms : [session.symptoms];
-    }
+    // Extract fields with extra null checks
+    const mainComplaint = patientHistory.chiefComplaint || 'Nicht angegeben';
+    const pastMedicalHistory = patientHistory.pastMedicalHistory || 'Nicht angegeben';
+    const currentMedications = medicalRecord.currentMedications || 'Keine angegeben';
+    const allergies = medicalRecord.allergies || 'Keine bekannt';
+    const description = patientHistory.incidentDescription || patientHistory.description || 'Keine Beschreibung vorhanden';
     
     return (
       <Card sx={{ mb: 3 }}>
         <CardHeader title="Medizinische Anamnese" />
         <Divider />
         <CardContent>
-          <Grid container spacing={3}>
-            {/* Personal Information */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Persönliche Informationen</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-                  <Typography variant="body1">
-                    {personalInfo.fullName || session.title || 'Nicht angegeben'}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={12} sm={6} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">Alter</Typography>
-                  <Typography variant="body1">
-                    {personalInfo.age ? `${personalInfo.age} Jahre` : (session.patientCode ? `${parseInt(session.patientCode.split('-')[1])} Jahre` : 'Nicht angegeben')}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={12} sm={6} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
-                  <Typography variant="body1">
-                    {personalInfo.gender || patientHistory.gender || 'Nicht angegeben'}
-                  </Typography>
-                </Grid>
-              </Grid>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Hauptbeschwerde</Typography>
+              <Typography variant="body1">{mainComplaint}</Typography>
             </Grid>
             
-            {/* Symptoms */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Symptome</Typography>
-              <Grid container spacing={1}>
-                {symptoms.length > 0 ? (
-                  symptoms.map((symptom, index) => (
-                    <Grid item key={index}>
-                      <Chip label={symptom} color="primary" variant="outlined" />
-                    </Grid>
-                  ))
-                ) : (
-                  <Grid item>
-                    <Typography variant="body1">Keine Symptome angegeben</Typography>
-                  </Grid>
-                )}
-              </Grid>
+              <Typography variant="subtitle2" color="text.secondary">Beschreibung</Typography>
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{description}</Typography>
             </Grid>
             
-            {/* Onset */}
-            {patientHistory.onset && (
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>Beginn der Symptome</Typography>
-                <Typography variant="body1">{patientHistory.onset}</Typography>
-              </Grid>
-            )}
-            
-            {/* Description */}
-            {patientHistory.description && (
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>Beschreibung</Typography>
-                <Typography variant="body1">{patientHistory.description}</Typography>
-              </Grid>
-            )}
-            
-            {/* Current Medications */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Aktuelle Medikation</Typography>
-              <Typography variant="body1">
-                {medicalRecord.currentMedications || 'Keine Angaben'}
-              </Typography>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Vorerkrankungen</Typography>
+              <Typography variant="body1">{pastMedicalHistory}</Typography>
             </Grid>
             
-            {/* Allergies */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Allergien</Typography>
-              <Typography variant="body1">
-                {medicalRecord.allergies || 'Keine Allergien bekannt'}
-              </Typography>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Aktuelle Medikation</Typography>
+              <Typography variant="body1">{currentMedications}</Typography>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Allergien</Typography>
+              <Typography variant="body1">{allergies}</Typography>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
     );
   };
-  
-  // Determine the treatment plan status with a fallback
-  const getTreatmentPlanStatus = (plan) => {
-    // If we have a treatment plan with a status field, use it
-    if (plan && plan.status) {
-      return plan.status;
-    }
-    
-    // Otherwise, assume it's a draft for now
-    return 'DRAFT';
-  };
-  
-  const renderTreatmentPlan = () => {
-    const planStatus = getTreatmentPlanStatus(treatmentPlan);
-    const isPlanActive = planStatus === 'ACTIVE';
-    const isPlanCompleted = planStatus === 'COMPLETED';
-    const isPlanEditable = !isPlanActive && !isPlanCompleted;
-    
-    return (
-      <Card>
-        <CardHeader 
-          title="Behandlungsplan" 
-          subheader={treatmentPlan ? `Status: ${planStatus}` : 'Kein Plan vorhanden'}
-          action={
-            <IconButton onClick={handleRefresh}>
-              <RefreshIcon />
-            </IconButton>
-          }
-        />
-        <CardContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          
-          <TextField
-            label="Diagnose"
-            variant="outlined"
-            fullWidth
-            value={diagnosis}
-            onChange={(e) => setDiagnosis(e.target.value)}
-            disabled={!isPlanEditable}
-            margin="normal"
-            onBlur={handleUpdateDiagnosis}
-          />
-          
-          <Divider sx={{ my: 2 }} />
-          
-          {/* Treatment Steps */}
-          <Typography variant="h6" gutterBottom>
-            Behandlungsschritte
-          </Typography>
-          
-          {treatmentSteps.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Noch keine Behandlungsschritte hinzugefügt.
-            </Alert>
-          ) : (
-            <List>
-              {treatmentSteps.map((step, index) => (
-                <ListItem 
-                  key={step.id} 
-                  secondaryAction={
-                    isPlanEditable && (
-                      <IconButton 
-                        edge="end" 
-                        onClick={() => handleDeleteStep(step.id)}
-                        disabled={loading}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    )
-                  }
-                >
-                  <ListItemIcon>
-                    {step.status === 'COMPLETED' ? (
-                      <CheckCircleIcon color="success" />
-                    ) : (
-                      <Typography variant="body1" color="textSecondary">
-                        {index + 1}.
-                      </Typography>
-                    )}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={step.description} 
-                    secondary={step.completedAt ? `Abgeschlossen am: ${formatDate(step.completedAt)}` : null}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-          
-          {/* Add New Step */}
-          {isPlanEditable && (
-            <Box sx={{ display: 'flex', mt: 2 }}>
-              <TextField
-                label="Neuer Behandlungsschritt"
-                variant="outlined"
-                fullWidth
-                value={newStep}
-                onChange={(e) => setNewStep(e.target.value)}
-                disabled={loading}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleAddStep}
-                disabled={loading || newStep.trim() === ''}
-                sx={{ ml: 1 }}
-                startIcon={<AddIcon />}
-              >
-                Hinzufügen
-              </Button>
-            </Box>
-          )}
-          
-          {/* Action Buttons */}
-          {!loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-              {isPlanEditable && (
-                <>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={handleSaveTreatmentPlan}
-                    disabled={loading || treatmentSteps.length === 0}
-                    sx={{ mr: 1 }}
-                    startIcon={<SaveIcon />}
-                  >
-                    Speichern
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSendTreatmentPlan}
-                    disabled={loading || treatmentSteps.length === 0}
-                    startIcon={<SendIcon />}
-                  >
-                    An Medic senden
-                  </Button>
-                </>
-              )}
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <CircularProgress />
-            </Box>
-          )}
-          
-          {/* Confirmation Dialog */}
-          <Dialog
-            open={dialogOpen}
-            onClose={() => setDialogOpen(false)}
-          >
-            <DialogTitle>Behandlungsplan senden</DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                Sind Sie sicher, dass Sie den Behandlungsplan an den Medic senden möchten? 
-                Nach dem Senden kann der Plan nicht mehr geändert werden.
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDialogOpen(false)} color="primary">
-                Abbrechen
-              </Button>
-              <Button onClick={confirmSendTreatmentPlan} color="primary" variant="contained">
-                Senden
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </CardContent>
-      </Card>
-    );
-  };
 
-  // Accept the session
+  // Accept the session and immediately set it to IN_PROGRESS
   const handleAcceptSession = async () => {
     try {
       setActionLoading(true);
+      setError(null); // Clear any previous errors
+      
+      console.log('Starting session accept process for ID:', id);
+      
+      // First, set local state to show UI changes immediately
+      setSession(prevState => ({
+        ...prevState,
+        status: 'ASSIGNED',
+        assignedToId: user?.id
+      }));
       
       // Assign session to current doctor
-      const result = await sessionsAPI.assign(id);
+      console.log('Assigning session to doctor...');
+      const assignResult = await sessionsAPI.assign(id);
+      console.log('Session assign result:', assignResult);
       
-      if (result) {
-        setSuccessMessage('Session erfolgreich übernommen');
+      // Update UI again after the first API call
+      setSession(prevState => ({
+        ...prevState,
+        status: 'ASSIGNED',
+        assignedToId: user?.id
+      }));
+      
+      if (assignResult) {
+        // Immediately set status to IN_PROGRESS (skip ASSIGNED state)
+        console.log('Updating session status to IN_PROGRESS...');
+        const updateResult = await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
+        console.log('Session update result:', updateResult);
         
-        // Reload session data
-        await loadSessionData();
+        // Final UI update with IN_PROGRESS status
+        setSession(prevState => ({
+          ...prevState,
+          status: 'IN_PROGRESS',
+          assignedToId: user?.id
+        }));
         
-        // Load or create treatment plan
-        await loadTreatmentPlan();
+        if (updateResult) {
+          setSuccessMessage('Session erfolgreich übernommen und gestartet');
+          
+          // Add a small delay before reloading data to ensure backend changes are processed
+          console.log('Waiting before reloading session data...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Final data refresh to ensure all data is up to date
+          console.log('Reloading session data...');
+          await loadSessionData();
+        }
       }
     } catch (err) {
       console.error('Error accepting session:', err);
       setError('Fehler beim Übernehmen der Session');
+      
+      // Reload data in case of error to reset UI
+      await loadSessionData();
     } finally {
       setActionLoading(false);
     }
@@ -1106,67 +661,47 @@ const SessionDetail = () => {
     
     try {
       setActionLoading(true);
+      setError(null); // Clear any previous errors
       
-      // First make sure the session is in IN_PROGRESS status
-      if (session.status !== 'IN_PROGRESS') {
-        // Update to IN_PROGRESS first
-        await sessionsAPI.update(id, { status: 'IN_PROGRESS' });
-        
-        // Short delay to ensure the update is processed
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+      console.log('Starting session completion process for ID:', id);
       
-      // Now complete the session
+      // Update UI immediately to show status change
+      setSession(prevState => ({
+        ...prevState,
+        status: 'COMPLETED'
+      }));
+      
+      // Complete the session
+      console.log('Updating session status to COMPLETED...');
       const response = await sessionsAPI.update(id, { status: 'COMPLETED' });
+      console.log('Session complete result:', response);
+      
       if (response) {
         setSuccessMessage('Die Session wurde erfolgreich abgeschlossen');
         
-        // Reload session data after a short delay to ensure backend has updated
-        setTimeout(() => {
-          loadSessionData();
-        }, 1000);
+        // Update UI again after API call
+        setSession(prevState => ({
+          ...prevState,
+          status: 'COMPLETED',
+          completedAt: new Date().toISOString()
+        }));
+        
+        // Add a small delay before reloading data to ensure backend has updated
+        console.log('Waiting before reloading session data...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Final data refresh
+        console.log('Reloading session data...');
+        await loadSessionData();
       }
     } catch (error) {
       console.error('Error completing session:', error);
       setError('Fehler beim Abschließen der Session');
+      
+      // Reload data in case of error to reset UI
+      await loadSessionData();
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  // Add this after session data loading function
-  const loadTreatmentPlan = async () => {
-    if (!session?.id || user?.role !== 'DOCTOR') return;
-
-    try {
-      const response = await treatmentPlansAPI.getBySessionId(session.id);
-      if (response.treatmentPlan) {
-        setTreatmentPlan(response.treatmentPlan);
-      } else if (session.status !== 'OPEN' && session.assignedToId === user.id) {
-        // Create a new draft treatment plan if one doesn't exist
-        try {
-          const createResponse = await treatmentPlansAPI.create({
-            sessionId: session.id,
-            diagnosis: '',
-            treatment: '',
-            medications: [],
-            notes: '',
-            status: 'DRAFT'
-          });
-          
-          if (createResponse.treatmentPlan) {
-            setTreatmentPlan(createResponse.treatmentPlan);
-          }
-        } catch (createError) {
-          console.error('Error creating treatment plan:', createError);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading treatment plan:', error);
-      // Don't show error for 404s since we handle that case above
-      if (error.response?.status !== 404) {
-        setError('Fehler beim Laden des Behandlungsplans');
-      }
     }
   };
 
@@ -1208,118 +743,80 @@ const SessionDetail = () => {
       
       {session && (
         <>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
-              <Paper sx={{ p: 3, mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box>
-                    <Typography variant="h6" component="h2">
-                      {session.title || 'Unbetitelte Session'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Session-ID: {session.patientCode || 'Unbekannt'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Erstellt am: {formatDate(session.createdAt)}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Chip
-                      label={getStatusInfo(session.status).label}
-                      color={getStatusInfo(session.status).color}
-                      icon={getStatusInfo(session.status).icon}
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      label={getPriorityLabel(session.priority)}
-                      color={getPriorityColor(session.priority)}
-                    />
-                  </Box>
-                </Box>
-                
-                <Divider sx={{ my: 2 }} />
-
-                {session.status === 'OPEN' && (
-                  <Box sx={{ mt: 2, mb: 3 }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleAcceptSession}
-                      disabled={actionLoading}
-                      startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
-                    >
-                      Session annehmen
-                    </Button>
-                  </Box>
-                )}
-
-                {session.status === 'IN_PROGRESS' && (
-                  <Box sx={{ mt: 2, mb: 3 }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={handleCompleteSession}
-                      disabled={actionLoading}
-                      startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
-                    >
-                      Session abschließen
-                    </Button>
-                  </Box>
-                )}
-                
-                <Box sx={{ my: 3 }}>
-                  <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
-                    <Tab label="Patienteninformationen" />
-                    <Tab label="Vitalwerte" />
-                    <Tab label="Behandlungsplan" />
-                  </Tabs>
-                  
-                  {tabValue === 0 && (
-                    <>
-                      {renderPatientInfo()}
-                      {renderMedicalRecord()}
-                    </>
-                  )}
-                  {tabValue === 1 && renderVitalSignsChart()}
-                  {tabValue === 2 && renderTreatmentPlan()}
-                </Box>
-              </Paper>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Aktionen
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                <Typography variant="h6" component="h2">
+                  {session.title || 'Unbetitelte Session'}
                 </Typography>
-                <List>
-                  <ListItem>
-                    <Button 
-                      variant="contained" 
-                      fullWidth 
-                      color="primary" 
-                      startIcon={<RefreshIcon />}
-                      onClick={handleRefresh}
-                    >
-                      Daten aktualisieren
-                    </Button>
-                  </ListItem>
-                  {session.status === 'ASSIGNED' && (
-                    <ListItem>
-                      <Button 
-                        variant="contained" 
-                        fullWidth 
-                        color="success" 
-                        startIcon={<CheckCircleIcon />} 
-                        onClick={() => sessionsAPI.update(session.id, { status: 'IN_PROGRESS' }).then(handleRefresh)}
-                      >
-                        Session starten
-                      </Button>
-                    </ListItem>
-                  )}
-                </List>
-              </Paper>
-            </Grid>
-          </Grid>
+                <Typography variant="body2" color="text.secondary">
+                  Session-ID: {session.patientCode || 'Unbekannt'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Erstellt am: {formatDate(session.createdAt)}
+                </Typography>
+              </Box>
+              <Box>
+                <Chip
+                  label={getStatusInfo(session.status).label}
+                  color={getStatusInfo(session.status).color}
+                  icon={getStatusInfo(session.status).icon}
+                  sx={{ mr: 1 }}
+                />
+                <Chip
+                  label={getPriorityLabel(session.priority)}
+                  color={getPriorityColor(session.priority)}
+                />
+              </Box>
+            </Box>
+            
+            <Divider sx={{ my: 2 }} />
+
+            {/* Show accept button only if status is OPEN */}
+            {session.status === 'OPEN' && (
+              <Box sx={{ mt: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleAcceptSession}
+                  disabled={actionLoading}
+                  startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                >
+                  Session annehmen und starten
+                </Button>
+              </Box>
+            )}
+
+            {/* Show complete button only if status is IN_PROGRESS */}
+            {session.status === 'IN_PROGRESS' && (
+              <Box sx={{ mt: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleCompleteSession}
+                  disabled={actionLoading}
+                  startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                >
+                  Session abschließen
+                </Button>
+              </Box>
+            )}
+            
+            <Box sx={{ my: 3 }}>
+              <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
+                <Tab label="Patienteninformationen" />
+                <Tab label="Vitalwerte" />
+              </Tabs>
+              
+              {tabValue === 0 && (
+                <>
+                  {renderPatientInfo()}
+                  {renderMedicalRecord()}
+                </>
+              )}
+              {tabValue === 1 && renderVitalSignsChart()}
+            </Box>
+          </Paper>
         </>
       )}
     </Box>

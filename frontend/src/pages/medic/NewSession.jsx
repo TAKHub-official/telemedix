@@ -33,8 +33,7 @@ import { sessionService } from '../../services/sessionService';
 const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Niedrig', color: 'success.main' },
   { value: 'NORMAL', label: 'Normal', color: 'info.main' },
-  { value: 'HIGH', label: 'Hoch', color: 'warning.main' },
-  { value: 'URGENT', label: 'Notfall', color: 'error.main' }
+  { value: 'HIGH', label: 'Hoch', color: 'warning.main' }
 ];
 
 const GENDER_OPTIONS = [

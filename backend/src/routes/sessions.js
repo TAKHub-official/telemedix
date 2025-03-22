@@ -28,7 +28,7 @@ router.post('/', authorize(['MEDIC', 'ADMIN']), createSession);
 router.put('/:id', updateSession);
 
 // Assign session to doctor - admins and doctors can do this
-router.post('/:id/assign', authorize(['ADMIN', 'DOCTOR']), assignSession);
+router.put('/:id/assign', authorize(['ADMIN', 'DOCTOR']), assignSession);
 
 // Add vital sign - accessible to creator, assigned doctor, and admins
 router.post('/:id/vitals', addVitalSign);

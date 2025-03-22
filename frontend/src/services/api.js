@@ -101,8 +101,20 @@ const sessionsAPI = {
   },
   getById: (id) => api.get(`/sessions/${id}`),
   create: (data) => api.post('/sessions', data),
-  update: (id, data) => api.put(`/sessions/${id}`, data),
-  assign: (id, doctorId) => api.post(`/sessions/${id}/assign`, { doctorId }),
+  update: (id, data) => {
+    console.log(`API call: updating session ${id} with data:`, data);
+    return api.put(`/sessions/${id}`, data).then(response => {
+      console.log('Session update response:', response);
+      return response.data;
+    });
+  },
+  assign: (id, doctorId) => {
+    console.log(`API call: assigning session ${id} to doctor`, doctorId || 'current user');
+    return api.put(`/sessions/${id}/assign`, { doctorId }).then(response => {
+      console.log('Session assign response:', response);
+      return response.data;
+    });
+  },
   addVitalSign: (id, data) => api.post(`/sessions/${id}/vitals`, data),
   addNote: (id, content) => api.post(`/sessions/${id}/notes`, { content }),
 };

@@ -100,9 +100,7 @@ const MedicHistory = () => {
       case 'NORMAL':
         return <Chip label="Normal" color="info" size="small" variant="outlined" />;
       case 'HIGH':
-        return <Chip label="Hoch" color="warning" size="small" variant="outlined" />;
-      case 'URGENT':
-        return <Chip label="Dringend" color="error" size="small" variant="outlined" />;
+        return <Chip label="Hoch" color="error" size="small" />;
       default:
         return <Chip label={priority} size="small" variant="outlined" />;
     }

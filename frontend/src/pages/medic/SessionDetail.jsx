@@ -89,15 +89,13 @@ const SessionDetail = () => {
   const renderPriorityChip = (priority) => {
     switch (priority) {
       case 'LOW':
-        return <Chip label="Niedrig" color="success" variant="outlined" />;
+        return <Chip label="Niedrig" color="success" size="small" variant="outlined" />;
       case 'NORMAL':
-        return <Chip label="Normal" color="info" variant="outlined" />;
+        return <Chip label="Normal" color="info" size="small" variant="outlined" />;
       case 'HIGH':
-        return <Chip label="Hoch" color="warning" variant="outlined" />;
-      case 'URGENT':
-        return <Chip label="Dringend" color="error" variant="outlined" />;
+        return <Chip label="Hoch" color="error" size="small" />;
       default:
-        return <Chip label={priority} variant="outlined" />;
+        return <Chip label={priority} size="small" variant="outlined" />;
     }
   };
 
