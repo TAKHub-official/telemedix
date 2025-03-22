@@ -31,9 +31,11 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+  LockReset as LockResetIcon
 } from '@mui/icons-material';
-import { usersAPI } from '../../services/api';
+import { usersAPI, adminAPI } from '../../services/api';
 
 const UserManagement = () => {
   // State for users data
@@ -49,6 +51,8 @@ const UserManagement = () => {
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openRoleDialog, setOpenRoleDialog] = useState(false);
+  const [openResetPasswordDialog, setOpenResetPasswordDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   
   // Form state
@@ -66,6 +70,10 @@ const UserManagement = () => {
     message: '',
     severity: 'success'
   });
+
+  // New role and password state
+  const [newRole, setNewRole] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   // Load users on component mount
   useEffect(() => {
@@ -139,11 +147,27 @@ const UserManagement = () => {
     setOpenDeleteDialog(true);
   };
 
+  // Open role change dialog
+  const handleOpenRoleDialog = (user) => {
+    setSelectedUser(user);
+    setNewRole(user.role);
+    setOpenRoleDialog(true);
+  };
+
+  // Open reset password dialog
+  const handleOpenResetPasswordDialog = (user) => {
+    setSelectedUser(user);
+    setNewPassword('');
+    setOpenResetPasswordDialog(true);
+  };
+
   // Close all dialogs
   const handleCloseDialogs = () => {
     setOpenCreateDialog(false);
     setOpenEditDialog(false);
     setOpenDeleteDialog(false);
+    setOpenRoleDialog(false);
+    setOpenResetPasswordDialog(false);
     setSelectedUser(null);
   };
 
@@ -195,6 +219,37 @@ const UserManagement = () => {
     } catch (err) {
       console.error('Error deleting user:', err);
       const errorMessage = err.response?.data?.message || 'Fehler beim Löschen des Benutzers';
+      showNotification(errorMessage, 'error');
+    }
+  };
+
+  // Handle role change
+  const handleChangeRole = async () => {
+    if (!selectedUser || !newRole) return;
+    
+    try {
+      await usersAPI.changeRole(selectedUser.id, newRole);
+      await fetchUsers();
+      handleCloseDialogs();
+      showNotification('Benutzerrolle erfolgreich geändert', 'success');
+    } catch (err) {
+      console.error('Error changing role:', err);
+      const errorMessage = err.response?.data?.message || 'Fehler beim Ändern der Benutzerrolle';
+      showNotification(errorMessage, 'error');
+    }
+  };
+
+  // Handle password reset
+  const handleResetPassword = async () => {
+    if (!selectedUser || !newPassword) return;
+    
+    try {
+      await adminAPI.resetUserPassword(selectedUser.id, newPassword);
+      handleCloseDialogs();
+      showNotification('Passwort erfolgreich zurückgesetzt', 'success');
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      const errorMessage = err.response?.data?.message || 'Fehler beim Zurücksetzen des Passworts';
       showNotification(errorMessage, 'error');
     }
   };
@@ -340,21 +395,34 @@ const UserManagement = () => {
                           variant="outlined"
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell align="right">
                         <IconButton 
                           color="primary" 
                           onClick={() => handleOpenEditDialog(user)}
-                          size="small"
+                          aria-label="Benutzer bearbeiten"
                         >
-                          <EditIcon fontSize="small" />
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton 
+                          color="secondary" 
+                          onClick={() => handleOpenRoleDialog(user)}
+                          aria-label="Rolle ändern"
+                        >
+                          <PersonIcon />
+                        </IconButton>
+                        <IconButton 
+                          color="warning" 
+                          onClick={() => handleOpenResetPasswordDialog(user)}
+                          aria-label="Passwort zurücksetzen"
+                        >
+                          <LockResetIcon />
                         </IconButton>
                         <IconButton 
                           color="error" 
                           onClick={() => handleOpenDeleteDialog(user)}
-                          size="small"
-                          disabled={user.role === 'ADMIN'}
+                          aria-label="Benutzer löschen"
                         >
-                          <DeleteIcon fontSize="small" />
+                          <DeleteIcon />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -555,6 +623,72 @@ const UserManagement = () => {
             color="error"
           >
             Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Role Change Dialog */}
+      <Dialog open={openRoleDialog} onClose={handleCloseDialogs}>
+        <DialogTitle>Benutzerrolle ändern</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Ändern Sie die Rolle für {selectedUser?.firstName} {selectedUser?.lastName}.
+          </DialogContentText>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="role-select-label">Rolle</InputLabel>
+            <Select
+              labelId="role-select-label"
+              id="role-select"
+              value={newRole}
+              label="Rolle"
+              onChange={(e) => setNewRole(e.target.value)}
+            >
+              <MenuItem value="ADMIN">Administrator</MenuItem>
+              <MenuItem value="DOCTOR">Arzt</MenuItem>
+              <MenuItem value="MEDIC">Sanitäter</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialogs}>Abbrechen</Button>
+          <Button 
+            onClick={handleChangeRole} 
+            variant="contained" 
+            color="primary"
+          >
+            Rolle ändern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={openResetPasswordDialog} onClose={handleCloseDialogs}>
+        <DialogTitle>Passwort zurücksetzen</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Setzen Sie ein neues Passwort für {selectedUser?.firstName} {selectedUser?.lastName}.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="newPassword"
+            label="Neues Passwort"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialogs}>Abbrechen</Button>
+          <Button 
+            onClick={handleResetPassword} 
+            variant="contained" 
+            color="primary"
+            disabled={!newPassword}
+          >
+            Passwort zurücksetzen
           </Button>
         </DialogActions>
       </Dialog>

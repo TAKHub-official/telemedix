@@ -22,6 +22,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import EventIcon from '@mui/icons-material/Event';
 import { logout } from '../../store/slices/authSlice';
 
 const drawerWidth = 240;
@@ -45,6 +46,7 @@ function AdminLayout() {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
     { text: 'Benutzerverwaltung', icon: <PeopleIcon />, path: '/admin/users' },
     { text: 'Einstellungen', icon: <SettingsIcon />, path: '/admin/settings' },
+    { text: 'Protokolle', icon: <EventIcon />, path: '/admin/logs' },
   ];
 
   const drawer = (

@@ -83,6 +83,15 @@ const usersAPI = {
   create: (data) => api.post('/users', data),
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
+  changeRole: (id, role) => api.put(`/users/${id}/role`, { role }),
+};
+
+// Admin API
+const adminAPI = {
+  getStats: () => api.get('/admin/stats'),
+  getDetailedStats: () => api.get('/admin/stats/detailed'),
+  getAuditLogs: (filters = {}) => api.get('/admin/logs', { params: filters }),
+  resetUserPassword: (id, newPassword) => api.post(`/admin/users/${id}/reset-password`, { newPassword }),
 };
 
 // Sessions API
@@ -138,4 +147,5 @@ export {
   usersAPI,
   sessionsAPI,
   treatmentPlansAPI,
+  adminAPI,
 }; 

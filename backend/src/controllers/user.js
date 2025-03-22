@@ -122,6 +122,8 @@ const createUser = async (req, res) => {
       message: 'Benutzer erfolgreich erstellt',
       user: userWithoutPassword
     });
+    
+    // TODO: Send welcome email with initial password
   } catch (error) {
     console.error('Create user error:', error);
     res.status(500).json({ 
@@ -138,7 +140,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, role, status } = req.body;
+    const { firstName, lastName, role, status, password } = req.body;
     
     // Find user by ID
     const user = await UserModel.findById(id);
@@ -150,7 +152,7 @@ const updateUser = async (req, res) => {
     }
     
     // Check if admin is trying to modify another admin
-    if (user.role === 'ADMIN' && req.user.id !== id) {
+    if (user.role === 'ADMIN' && req.user.id !== id && req.user.role === 'ADMIN') {
       return res.status(403).json({ 
         message: 'Administratoren können nur von sich selbst bearbeitet werden'
       });
@@ -160,6 +162,7 @@ const updateUser = async (req, res) => {
     const updateData = {};
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
+    if (password) updateData.password = password;
     
     // Only admins can change roles and status
     if (req.user.role === 'ADMIN') {
@@ -182,7 +185,7 @@ const updateUser = async (req, res) => {
     );
     
     // Return user without password
-    const { password, ...userWithoutPassword } = updatedUser;
+    const { password: _, ...userWithoutPassword } = updatedUser;
     
     res.status(200).json({
       message: 'Benutzer erfolgreich aktualisiert',
@@ -190,6 +193,70 @@ const updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Update user error:', error);
+    res.status(500).json({ 
+      message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
+    });
+  }
+};
+
+/**
+ * Change user role (admin only)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const changeUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    // Validate role
+    if (!role || !['ADMIN', 'DOCTOR', 'MEDIC'].includes(role.toUpperCase())) {
+      return res.status(400).json({ 
+        message: 'Gültige Rolle erforderlich (ADMIN, DOCTOR, MEDIC)'
+      });
+    }
+    
+    // Find user by ID
+    const user = await UserModel.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'Benutzer nicht gefunden'
+      });
+    }
+    
+    // Prevent changing role of an admin user unless you are that admin
+    if (user.role === 'ADMIN' && req.user.id !== id) {
+      return res.status(403).json({ 
+        message: 'Administratorrechte können nur vom Benutzer selbst geändert werden'
+      });
+    }
+    
+    // Update user role
+    const updatedUser = await UserModel.update(id, {
+      role: role.toUpperCase()
+    });
+    
+    // Log role change
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    await AuditLogModel.logDataEvent(
+      req.user.id,
+      'UPDATE',
+      'USER',
+      id,
+      `Benutzerrolle geändert: ${user.role} → ${role.toUpperCase()}`,
+      ipAddress
+    );
+    
+    // Return user without password
+    const { password, ...userWithoutPassword } = updatedUser;
+    
+    res.status(200).json({
+      message: 'Benutzerrolle erfolgreich geändert',
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Change user role error:', error);
     res.status(500).json({ 
       message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
     });
@@ -251,5 +318,6 @@ module.exports = {
   getUserById,
   createUser,
   updateUser,
+  changeUserRole,
   deleteUser
 }; 

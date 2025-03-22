@@ -10,6 +10,9 @@ import NotFound from './pages/NotFound';
 
 // Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import UserManagement from './pages/admin/UserManagement';
+import SystemSettings from './pages/admin/SystemSettings';
+import AuditLogs from './pages/admin/AuditLogs';
 import DoctorDashboard from './pages/doctor/Dashboard';
 import Sessions from './pages/doctor/Sessions';
 import SessionDetail from './pages/doctor/SessionDetail';
@@ -74,6 +77,9 @@ function App() {
         </ProtectedRoute>
       }>
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="settings" element={<SystemSettings />} />
+        <Route path="logs" element={<AuditLogs />} />
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
       
