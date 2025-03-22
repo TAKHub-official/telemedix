@@ -95,7 +95,15 @@ class SessionModel {
   } = {}) {
     const where = {};
     
-    if (status) where.status = status;
+    if (status) {
+      // Handle array of statuses or single status
+      if (Array.isArray(status)) {
+        where.status = { in: status };
+      } else {
+        where.status = status;
+      }
+    }
+    
     if (priority) where.priority = priority;
     if (createdById) where.createdById = createdById;
     if (assignedToId) where.assignedToId = assignedToId;
@@ -231,10 +239,18 @@ class SessionModel {
     };
     
     // Add additional filters if provided
-    if (status && status !== 'OPEN') {
-      // If a specific status is requested (other than OPEN which is already in the OR condition)
-      where.status = status;
-      delete where.OR; // Remove the OR condition as it would conflict
+    if (status) {
+      // Handle array of statuses or single status
+      if (Array.isArray(status)) {
+        // For arrays like ['COMPLETED', 'CANCELLED'], create an OR condition
+        delete where.OR; // Remove the original OR condition
+        where.status = { in: status };
+        where.assignedToId = doctorId; // Only assigned to this doctor for archived sessions
+      } else if (status !== 'OPEN') {
+        // If a specific status is requested (other than OPEN which is already in the OR condition)
+        where.status = status;
+        delete where.OR; // Remove the OR condition as it would conflict
+      }
     }
     
     if (priority) {

@@ -39,8 +39,7 @@ const PRIORITY_OPTIONS = [
 
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Männlich' },
-  { value: 'FEMALE', label: 'Weiblich' },
-  { value: 'OTHER', label: 'Divers' }
+  { value: 'FEMALE', label: 'Weiblich' }
 ];
 
 const CONSCIOUSNESS_OPTIONS = [
@@ -107,15 +106,15 @@ const NewSession = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [generatedPatientId, setGeneratedPatientId] = useState('');
+  const [generatedSessionId, setGeneratedSessionId] = useState('');
   
-  // Generate a unique patient ID on component mount
+  // Generate a unique session ID on component mount
   useEffect(() => {
-    generatePatientId();
+    generateSessionId();
   }, []);
   
-  // Generate a unique patient ID with format P[YY][MM][DD][###]
-  const generatePatientId = () => {
+  // Generate a unique session ID with format S[YY][MM][DD][###]
+  const generateSessionId = () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2); // Last 2 digits of year
     const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month (1-12) padded to 2 digits
@@ -124,13 +123,13 @@ const NewSession = () => {
     // Generate a random 3-digit number for the sequence
     const sequence = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     
-    const patientId = `P${year}${month}${day}${sequence}`;
-    setGeneratedPatientId(patientId);
+    const sessionId = `S${year}${month}${day}${sequence}`;
+    setGeneratedSessionId(sessionId);
     
     // Update form data with the generated ID
     setFormData(prev => ({
       ...prev,
-      patientCode: patientId
+      patientCode: sessionId
     }));
   };
   
@@ -209,11 +208,9 @@ const NewSession = () => {
             personalInfo: {
               fullName: formData.title || `Patient ${formData.patientCode}`,
               age: formData.patientAge,
-              gender: formData.patientGender === 'MALE' ? 'Männlich' : 
-                     formData.patientGender === 'FEMALE' ? 'Weiblich' : 'Divers'
+              gender: formData.patientGender === 'MALE' ? 'Männlich' : 'Weiblich'
             },
-            gender: formData.patientGender === 'MALE' ? 'Männlich' : 
-                    formData.patientGender === 'FEMALE' ? 'Weiblich' : 'Divers',
+            gender: formData.patientGender === 'MALE' ? 'Männlich' : 'Weiblich',
             chiefComplaint: formData.chiefComplaint,
             incidentDescription: formData.incidentDescription,
             pastMedicalHistory: formData.pastMedicalHistory
@@ -341,12 +338,12 @@ const NewSession = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Patienten-Code"
+                  label="Session-ID"
                   name="patientCode"
                   value={formData.patientCode}
                   disabled={true} // Disable manual entry
                   margin="normal"
-                  helperText="Automatisch generierter Patienten-Code"
+                  helperText="Automatisch generierte Session-ID"
                 />
               </Grid>
               
@@ -779,7 +776,7 @@ const NewSession = () => {
                 Session: {formData.title || `Patient ${formData.patientCode}`}
               </Typography>
               <Typography variant="body2">
-                Patienten-Code: {formData.patientCode}
+                Session-ID: {formData.patientCode}
               </Typography>
               <Typography variant="body2" sx={{ 
                 color: PRIORITY_OPTIONS.find(p => p.value === formData.priority)?.color 

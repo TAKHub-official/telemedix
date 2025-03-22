@@ -155,7 +155,7 @@ const MedicHistory = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Titel</TableCell>
-                  <TableCell>Patienten-Code</TableCell>
+                  <TableCell>Session-ID</TableCell>
                   <TableCell>Priorität</TableCell>
                   <TableCell>Erstellt am</TableCell>
                   <TableCell>Abgeschlossen am</TableCell>

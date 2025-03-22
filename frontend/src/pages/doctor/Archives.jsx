@@ -59,7 +59,13 @@ const Archives = () => {
         setError(null);
       } catch (err) {
         console.error('Error loading archived sessions:', err);
-        setError('Fehler beim Laden der archivierten Sessions');
+        if (err.response && err.response.status === 500) {
+          setError('Fehler beim Laden der archivierten Sessions');
+        } else {
+          setSessions([]);
+          setFilteredSessions([]);
+          setError(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -96,6 +102,38 @@ const Archives = () => {
   // Handle view session
   const handleViewSession = (id) => {
     navigate(`/doctor/sessions/${id}`);
+  };
+
+  // Handle refreshing/retrying
+  const handleRetry = () => {
+    const loadArchivedSessions = async () => {
+      try {
+        setLoading(true);
+        
+        // Echte API-Anfrage an das Backend
+        const response = await sessionsAPI.getAll({ 
+          status: ['COMPLETED', 'CANCELLED']  // Nur abgeschlossene und abgebrochene Sessions
+        });
+        
+        const archivedSessions = response.data.sessions || [];
+        setSessions(archivedSessions);
+        setFilteredSessions(archivedSessions);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading archived sessions:', err);
+        if (err.response && err.response.status === 500) {
+          setError('Fehler beim Laden der archivierten Sessions');
+        } else {
+          setSessions([]);
+          setFilteredSessions([]);
+          setError(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadArchivedSessions();
   };
 
   // Get priority color
@@ -195,7 +233,7 @@ const Archives = () => {
           <Button 
             variant="outlined" 
             sx={{ mt: 2, color: 'white', borderColor: 'white' }}
-            onClick={() => window.location.reload()}
+            onClick={handleRetry}
           >
             Erneut versuchen
           </Button>
@@ -206,7 +244,7 @@ const Archives = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Patient</TableCell>
+                  <TableCell>Session ID</TableCell>
                   <TableCell>Priorität</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Erstellt am</TableCell>
@@ -227,7 +265,6 @@ const Archives = () => {
                     <TableRow key={session.id}>
                       <TableCell>
                         {session.patientCode || 'Nicht verfügbar'}
-                        {session.medicalRecord?.patientAge && `, ${session.medicalRecord.patientAge}`}
                       </TableCell>
                       <TableCell>
                         <Chip

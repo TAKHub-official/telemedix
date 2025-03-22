@@ -1,12 +1,11 @@
-// Script to prepare the database with migrations and seed data
+// Script to prepare the PostgreSQL database with migrations and seed data
 const { execSync } = require('child_process');
-const path = require('path');
 
 /**
- * Run database migrations and seed data
+ * Run database migrations and seed data for PostgreSQL
  */
 async function prepareDatabase() {
-  console.log('Preparing database...');
+  console.log('Preparing PostgreSQL database...');
   
   try {
     // Generate Prisma client
@@ -14,14 +13,14 @@ async function prepareDatabase() {
     execSync('npx prisma generate', { stdio: 'inherit' });
     
     // Run migrations
-    console.log('Running database migrations...');
-    execSync('npx prisma migrate dev --name init', { stdio: 'inherit' });
+    console.log('Running PostgreSQL migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
     
-    // Seed database
-    console.log('Seeding database...');
+    // Seed database with only test users
+    console.log('Seeding database with test users only...');
     execSync('node prisma/seed.js', { stdio: 'inherit' });
     
-    console.log('Database prepared successfully!');
+    console.log('PostgreSQL database prepared successfully!');
   } catch (error) {
     console.error('Error preparing database:', error);
     process.exit(1);

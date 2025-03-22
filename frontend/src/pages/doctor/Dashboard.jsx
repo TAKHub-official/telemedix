@@ -357,7 +357,7 @@ const DoctorDashboard = () => {
               <CardHeader
                 title={
                   <Typography variant="h6" component="div">
-                    {session.patientCode || 'Unbenannter Patient'}
+                    {session.patientCode || 'Unbenannte Session'}
                   </Typography>
                 }
                 subheader={

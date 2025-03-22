@@ -44,12 +44,7 @@ export const initSocket = (token, userId) => {
     return socket;
   } catch (error) {
     console.error('Failed to initialize socket:', error);
-    // Return a dummy socket object to prevent null references
-    return {
-      on: () => {},
-      emit: () => {},
-      disconnect: () => {}
-    };
+    throw new Error('Socket initialization failed');
   }
 };
 
@@ -60,12 +55,7 @@ export const initSocket = (token, userId) => {
 export const getSocket = () => {
   if (!socket) {
     console.warn('Socket.IO not initialized. Some real-time features may not work.');
-    // Return a dummy socket object that won't throw errors
-    return {
-      on: () => () => {}, // Return a no-op cleanup function
-      emit: () => {},
-      disconnect: () => {}
-    };
+    return null;
   }
   return socket;
 };
@@ -77,10 +67,11 @@ export const getSocket = () => {
 export const joinSessionRoom = (sessionId) => {
   if (!socket) {
     console.warn('Socket.IO not initialized. Unable to join session room.');
-    return;
+    return false;
   }
   
   socket.emit('joinSession', sessionId);
+  return true;
 };
 
 /**
@@ -90,10 +81,11 @@ export const joinSessionRoom = (sessionId) => {
 export const leaveSessionRoom = (sessionId) => {
   if (!socket) {
     console.warn('Socket.IO not initialized. Unable to leave session room.');
-    return;
+    return false;
   }
   
   socket.emit('leaveSession', sessionId);
+  return true;
 };
 
 /**
@@ -110,7 +102,9 @@ export const onSessionUpdate = (callback) => {
   
   // Return cleanup function
   return () => {
-    socket.off('sessionUpdate', callback);
+    if (socket) {
+      socket.off('sessionUpdate', callback);
+    }
   };
 };
 
@@ -128,7 +122,9 @@ export const onNotification = (callback) => {
   
   // Return cleanup function
   return () => {
-    socket.off('notification', callback);
+    if (socket) {
+      socket.off('notification', callback);
+    }
   };
 };
 

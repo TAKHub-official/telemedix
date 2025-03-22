@@ -352,7 +352,7 @@ const Sessions = () => {
           <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
-              label="Suche (Patient-ID, Beschwerde)"
+              label="Suche (Session-ID, Beschwerde)"
               variant="outlined"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -415,7 +415,7 @@ const Sessions = () => {
                       direction={orderBy === 'patientCode' ? order : 'asc'}
                       onClick={() => handleRequestSort('patientCode')}
                     >
-                      Patienten-ID
+                      Session-ID
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>

@@ -12,13 +12,23 @@ const getSessions = async (req, res) => {
     const { status, priority, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
+    let processedStatus = status;
+    
+    // Process status parameter - handle comma-separated values
+    if (status && typeof status === 'string' && status.includes(',')) {
+      processedStatus = status.split(',');
+    }
+    
     let sessions;
     
     // Apply filters based on user role
     if (req.user.role === 'DOCTOR') {
       // For doctors: show both assigned sessions AND open sessions
       sessions = await SessionModel.findAllForDoctor(req.user.id, {
-        status: status ? status.toUpperCase() : undefined,
+        status: processedStatus ? 
+          // Handle both array and string values for status
+          (Array.isArray(processedStatus) ? processedStatus.map(s => s.toUpperCase()) : processedStatus.toUpperCase()) 
+          : undefined,
         priority: priority ? priority.toUpperCase() : undefined,
         skip,
         take: parseInt(limit)
@@ -26,7 +36,10 @@ const getSessions = async (req, res) => {
     } else if (req.user.role === 'MEDIC') {
       // For medics: only show sessions created by them
       sessions = await SessionModel.findAll({
-        status: status ? status.toUpperCase() : undefined,
+        status: processedStatus ? 
+          // Handle both array and string values for status
+          (Array.isArray(processedStatus) ? processedStatus.map(s => s.toUpperCase()) : processedStatus.toUpperCase()) 
+          : undefined,
         priority: priority ? priority.toUpperCase() : undefined,
         createdById: req.user.id,
         skip,
@@ -35,7 +48,10 @@ const getSessions = async (req, res) => {
     } else {
       // For admin or other roles: show all sessions with optional filters
       sessions = await SessionModel.findAll({
-        status: status ? status.toUpperCase() : undefined,
+        status: processedStatus ? 
+          // Handle both array and string values for status
+          (Array.isArray(processedStatus) ? processedStatus.map(s => s.toUpperCase()) : processedStatus.toUpperCase()) 
+          : undefined,
         priority: priority ? priority.toUpperCase() : undefined,
         skip,
         take: parseInt(limit)

@@ -87,7 +87,18 @@ const usersAPI = {
 
 // Sessions API
 const sessionsAPI = {
-  getAll: (params) => api.get('/sessions', { params }),
+  getAll: (params) => {
+    // Handle array parameters correctly
+    if (params && params.status && Array.isArray(params.status)) {
+      // Create a copy to avoid modifying the original object
+      const modifiedParams = { ...params };
+      // Convert status array to comma-separated string
+      modifiedParams.status = params.status.join(',');
+      return api.get('/sessions', { params: modifiedParams });
+    }
+    // Regular case
+    return api.get('/sessions', { params });
+  },
   getById: (id) => api.get(`/sessions/${id}`),
   create: (data) => api.post('/sessions', data),
   update: (id, data) => api.put(`/sessions/${id}`, data),

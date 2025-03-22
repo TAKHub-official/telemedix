@@ -181,7 +181,7 @@ const SessionDetail = () => {
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <Typography variant="body1">
-              <strong>Patienten-Code:</strong> {session.patientCode}
+              <strong>Session-ID:</strong> {session.patientCode}
             </Typography>
           </Grid>
           

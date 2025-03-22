@@ -30,49 +30,19 @@ import {
 } from '@mui/icons-material';
 import { api as apiService } from '../../services/api';
 
-// Placeholder API for system settings - will need to be implemented
+// Real API for system settings
 const systemSettingsAPI = {
   getAll: () => {
-    // Simulate API call with mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: {
-            settings: [
-              { key: 'SITE_NAME', value: 'TeleMedix', description: 'Name der Website' },
-              { key: 'CONTACT_EMAIL', value: 'admin@telemedix.com', description: 'Kontakt-E-Mail-Adresse' },
-              { key: 'ENABLE_NOTIFICATIONS', value: 'true', description: 'E-Mail-Benachrichtigungen aktivieren' },
-              { key: 'SESSION_TIMEOUT', value: '60', description: 'Timeout für Sitzungen in Minuten' },
-              { key: 'TELEGRAM_ENABLED', value: 'false', description: 'Telegram-Benachrichtigungen aktivieren' }
-            ]
-          }
-        });
-      }, 1000);
-    });
+    return apiService.get('/admin/settings');
   },
   update: (settings) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ data: { success: true } });
-      }, 1000);
-    });
+    return apiService.put('/admin/settings', settings);
   },
   create: (setting) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ data: { success: true, setting } });
-      }, 1000);
-    });
+    return apiService.post('/admin/settings', setting);
   },
   delete: (key) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ data: { success: true } });
-      }, 1000);
-    });
+    return apiService.delete(`/admin/settings/${key}`);
   }
 };
 

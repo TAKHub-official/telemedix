@@ -56,7 +56,7 @@ async function main() {
     console.log('Medic user created:', medic.email);
 
     // Delete all existing data except users
-    console.log('Cleaning up existing sessions...');
+    console.log('Cleaning up existing data...');
     await prisma.note.deleteMany({});
     await prisma.vitalSign.deleteMany({});
     await prisma.treatmentStep.deleteMany({});
@@ -66,10 +66,9 @@ async function main() {
     await prisma.attachment.deleteMany({});
     await prisma.session.deleteMany({});
     await prisma.auditLog.deleteMany({});
-    console.log('Existing sessions cleaned up');
+    console.log('Database cleaned up - all test/mock data removed');
 
-    // WICHTIG: KEINE Testsessions mehr erstellen!
-    console.log('Seeding completed - only user accounts remain.');
+    console.log('Seeding completed - only the three test user accounts remain.');
   } catch (error) {
     console.error('Error seeding database:', error);
     console.error(error.stack);

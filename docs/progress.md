@@ -22,6 +22,9 @@
 - ✅ Migration von SQLite zu PostgreSQL abgeschlossen
 - ✅ Test-Sessions für Entwicklung und Demonstration erstellt
 - ✅ Darstellung von wartenden Sessions (Status: PENDING) im Frontend implementiert
+- ✅ Bereinigung der Code-Basis und Entfernung aller Mock-Daten
+- ✅ Standardisierung auf PostgreSQL, Entfernung aller SQLite-Referenzen
+- ✅ Optimierung der Seed-Skripte für ausschließliche Erstellung der drei Testbenutzer
 
 ### Frontend
 - ✅ React App mit Vite aufgesetzt
@@ -39,6 +42,8 @@
 - ✅ CSP-Konfiguration für WebSocket-Verbindungen
 - ✅ Medic Dashboard mit Session-Übersicht implementiert
 - ✅ Anamnesebogen-Erfassung für Medics implementiert
+- ✅ Entfernung aller Mock-Daten aus Frontend-Komponenten und Services
+- ✅ Verbesserte Fehlerbehandlung in Socket.IO-Service
 
 ### Dokumentation
 - ✅ Benutzeranleitung
@@ -163,3 +168,13 @@
   - Verbesserte Sitzungszuweisung mit DoctorID-Behandlung
   - Stufenweiser Session-Abschluss-Prozess (IN_PROGRESS → COMPLETED)
   - Benachrichtigungssystem für Behandlungsplan-Updates verbessert 
+
+### 2023-07-XX: UI-Verbesserungen und Systemanpassungen
+- ✅ Implementierte Änderungen:
+  - MedicLayout Komponente um einen Dashboard-Button erweitert für einfachere Navigation
+  - Geschlechtsoptionen im Anamnesebogen auf "männlich" und "weiblich" beschränkt
+  - "Patienten-ID" in der gesamten Anwendung zu "Session-ID" umbenannt
+  - Format der ID von "P[YY][MM][DD][###]" zu "S[YY][MM][DD][###]" geändert (P zu S)
+  - Alle Bezeichnungen in UI-Komponenten für Medic und Arzt entsprechend angepasst
+
+**Hinweis zur Datenbank**: In der Datenbank und im Backend-Code wird das Feld weiterhin als `patientCode` bezeichnet, obwohl es in der UI als "Session-ID" angezeigt wird. Dies ist eine bewusste Entscheidung, um größere Änderungen am Datenbankschema zu vermeiden. Bei zukünftigen Änderungen oder Refactorings sollte dies berücksichtigt werden, um Verwirrung zu vermeiden. 

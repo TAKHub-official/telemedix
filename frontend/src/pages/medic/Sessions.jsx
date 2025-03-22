@@ -344,7 +344,7 @@ const MedicSessions = () => {
                   </Stack>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                  Patienten-Code: {session.patientCode}
+                  Session-ID: {session.patientCode}
                 </Typography>
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

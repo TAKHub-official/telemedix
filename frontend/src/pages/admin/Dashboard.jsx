@@ -63,18 +63,15 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        // In a real implementation, you would fetch actual stats from the API
-        // For now, we'll use dummy data
+        // Fetch actual stats from the API
+        const response = await apiService.get('/admin/stats');
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock statistics data
-        const data = {
-          totalUsers: 24,
-          activeSessions: 3,
-          completedSessions: 45,
-          pendingSessions: 2
+        // If no data is returned, provide default empty values
+        const data = response.data || {
+          totalUsers: 0,
+          activeSessions: 0,
+          completedSessions: 0,
+          pendingSessions: 0
         };
         
         setStats(data);

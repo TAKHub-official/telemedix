@@ -23,6 +23,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import AddIcon from '@mui/icons-material/Add';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/Logout';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { logout } from '../../store/slices/authSlice';
 
 const drawerWidth = 240;
@@ -47,6 +48,7 @@ function MedicLayout() {
   };
 
   const navItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/medic/dashboard' },
     { text: 'Meine Sessions', icon: <ListAltIcon />, path: '/medic/sessions' },
     { text: 'Vergangene Sessions', icon: <HistoryIcon />, path: '/medic/history' },
   ];

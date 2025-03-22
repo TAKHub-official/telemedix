@@ -45,7 +45,7 @@ function DoctorLayout() {
   const location = useLocation();
 
   // Placeholder for notification count - would come from notification state in a real app
-  const notificationCount = 3;
+  const notificationCount = 0;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -71,13 +71,6 @@ function DoctorLayout() {
   const handleNotificationMenuClose = () => {
     setNotificationMenuAnchor(null);
   };
-
-  // Mock notifications
-  const mockNotifications = [
-    { id: 1, title: 'Neue Session', message: 'Eine neue Session wurde erstellt', time: '10:30' },
-    { id: 2, title: 'Dringende Session', message: 'Patient mit hoher Priorität', time: '11:45' },
-    { id: 3, title: 'Vitalwerte aktualisiert', message: 'Session #1234 hat neue Daten', time: '12:15' },
-  ];
 
   const navItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/doctor/dashboard' },
@@ -200,29 +193,9 @@ function DoctorLayout() {
               Benachrichtigungen
             </Typography>
             <Divider />
-            {mockNotifications.map((notification) => (
-              <MenuItem key={notification.id} onClick={handleNotificationMenuClose}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                      {notification.title}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {notification.time}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {notification.message}
-                  </Typography>
-                </Box>
-              </MenuItem>
-            ))}
-            <Divider />
-            <MenuItem onClick={handleNotificationMenuClose} sx={{ justifyContent: 'center' }}>
-              <Typography variant="body2" color="primary">
-                Alle Benachrichtigungen anzeigen
-              </Typography>
-            </MenuItem>
+            <Typography variant="body2" sx={{ p: 2, textAlign: 'center' }}>
+              Keine neuen Benachrichtigungen
+            </Typography>
           </Menu>
           
           {/* User menu */}
