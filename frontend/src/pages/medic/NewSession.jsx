@@ -212,7 +212,36 @@ const NewSession = () => {
             injuries: formData.injuries,
             incidentDescription: formData.incidentDescription,
             pastMedicalHistory: showPastMedicalHistory ? formData.pastMedicalHistory : '',
-            treatmentSoFar: formData.treatmentSoFar
+            treatmentSoFar: formData.treatmentSoFar,
+            treatment: {
+              // Add detailed treatment fields here
+              breathing: formData.ventilationManual ? 'Manuell' : formData.ventilationMechanical ? 'Maschinell' : 'Spontan',
+              // Bei Zugang alle gewählten Optionen anzeigen, kommagetrennt
+              access: [
+                formData.accessPvk ? 'PVK' : null,
+                formData.accessIo ? 'IO' : null,
+                formData.accessZvk ? 'ZVK' : null
+              ].filter(Boolean).join(', ') || 'Kein Zugang',
+              intubation: formData.intubationSga ? 'SGA' : formData.intubationTubus ? 'Endotr. Tubus' : formData.intubationKoniotomie ? 'Koniotomie' : 'Keine',
+              // Bei Blutstillung alle gewählten Optionen anzeigen, kommagetrennt
+              hemostasis: [
+                formData.hemostasisTq ? 'TQ' : null,
+                formData.hemostasisDv ? 'Israeli' : null,
+                formData.hemostasisWp ? 'WP' : null
+              ].filter(Boolean).join(', ') || 'Keine',
+              perfusors: formData.perfusors || 'Keine',
+              medicationText: medicationText || 'Keine',
+              extendedMeasures: (
+                (formData.extendedNarcosis ? 'Narkose, ' : '') +
+                (formData.extendedStiffneck ? 'Stiffneck, ' : '') +
+                (formData.extendedVacuumMattress ? 'Vakuum-Matratze, ' : '') +
+                (formData.extendedGastricTube ? 'Magensonde, ' : '') +
+                (formData.extendedUrinaryCatheter ? 'Urinkatheter, ' : '')
+              ).replace(/,\s*$/, '') || 'Keine',
+              reanimation: formData.reanimation || 'Keine',
+              thoraxDrainage: (formData.thoraxDrainageRight ? 'Rechts, ' : '') + (formData.thoraxDrainageLeft ? 'Links' : '').replace(/,\s*$/, '') || 'Keine',
+              decompression: (formData.decompressionRight ? 'Rechts, ' : '') + (formData.decompressionLeft ? 'Links' : '').replace(/,\s*$/, '') || 'Keine'
+            }
           }),
           allergies: showAllergies ? formData.allergies : '',
           currentMedications: formData.medications
@@ -298,10 +327,11 @@ const NewSession = () => {
         // Access
         if (formData.accessPvk || formData.accessIo || formData.accessZvk) {
           treatmentDescription += 'Zugang: ';
-          if (formData.accessPvk) treatmentDescription += 'PVK, ';
-          if (formData.accessIo) treatmentDescription += 'IO, ';
-          if (formData.accessZvk) treatmentDescription += 'ZVK, ';
-          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+          const accessTypes = [];
+          if (formData.accessPvk) accessTypes.push('PVK');
+          if (formData.accessIo) accessTypes.push('IO');
+          if (formData.accessZvk) accessTypes.push('ZVK');
+          treatmentDescription += accessTypes.join(', ') + '. ';
         } else {
           treatmentDescription += 'Zugang: Kein. ';
         }
@@ -391,10 +421,11 @@ const NewSession = () => {
         // Blutstillung
         if (formData.hemostasisTq || formData.hemostasisDv || formData.hemostasisWp) {
           treatmentDescription += 'Blutstillung: ';
-          if (formData.hemostasisTq) treatmentDescription += 'TQ, ';
-          if (formData.hemostasisDv) treatmentDescription += 'Israeli, ';
-          if (formData.hemostasisWp) treatmentDescription += 'WP, ';
-          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+          const hemostasisTypes = [];
+          if (formData.hemostasisTq) hemostasisTypes.push('TQ');
+          if (formData.hemostasisDv) hemostasisTypes.push('Israeli');
+          if (formData.hemostasisWp) hemostasisTypes.push('WP');
+          treatmentDescription += hemostasisTypes.join(', ') + '. ';
         }
         else {
           treatmentDescription += 'Blutstillung: Keine. ';

@@ -24,7 +24,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField
+  TextField,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -46,6 +49,15 @@ import {
 import { sessionsAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SESSION_COMPLETION_REASONS } from '../../constants';
+import { sessionService } from '../../services/sessionService';
+
+// Import components
+import SessionHeader from '../../components/medic/SessionHeader';
+import PatientInfo from '../../components/medic/PatientInfo';
+import InjuryInfo from '../../components/medic/InjuryInfo';
+import PreviousTreatment from '../../components/medic/PreviousTreatment';
+import TreatmentPlan from '../../components/medic/TreatmentPlan';
+import VitalSigns from '../../components/medic/VitalSigns';
 
 // Safe parsing of JSON data
 const safelyParseJSON = (jsonString, defaultValue = {}) => {
@@ -68,7 +80,7 @@ const safelyParseJSON = (jsonString, defaultValue = {}) => {
   }
 };
 
-const SessionDetail = () => {
+const DoctorSessionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -88,61 +100,81 @@ const SessionDetail = () => {
   
   // Fetch session data
   useEffect(() => {
-    if (id) {
-      loadSessionData();
-    }
+    const fetchSessionDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log('Fetching session details for ID:', id);
+        const response = await sessionService.getSessionById(id);
+        console.log('Session response received:', response);
+        
+        // Handle different response structures
+        let sessionData = null;
+        if (response && response.data && response.data.session) {
+          sessionData = response.data.session;
+        } else if (response && response.session) {
+          sessionData = response.session;
+        } else if (response && response.data) {
+          sessionData = response.data;
+        }
+        
+        if (sessionData) {
+          console.log('Session data extracted:', sessionData);
+          setSession(sessionData);
+          
+          // Initialisierung von userData
+          const userData = JSON.parse(localStorage.getItem('user'));
+          setUser(userData);
+          
+          // Clear any previous errors
+          setError(null);
+        } else {
+          console.error('No session data found in response');
+          setError('Keine Session-Daten gefunden');
+        }
+      } catch (err) {
+        console.error('Error fetching session details:', err);
+        setError('Fehler beim Laden der Session-Details. Bitte versuchen Sie es später erneut.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSessionDetails();
   }, [id]);
   
-  const loadSessionData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch session data with debug logging
-      console.log('Fetching session data for ID:', id);
-      const sessionResponse = await sessionsAPI.getById(id);
-      console.log('Session response received:', sessionResponse);
-      
-      // Handle response structure variants
-      let sessionData = null;
-      if (sessionResponse && sessionResponse.data && sessionResponse.data.session) {
-        // Structure: { data: { session: {...} } }
-        sessionData = sessionResponse.data.session;
-      } else if (sessionResponse && sessionResponse.session) {
-        // Structure: { session: {...} }
-        sessionData = sessionResponse.session;
-      } else if (sessionResponse && sessionResponse.data) {
-        // Structure: { data: {...} }
-        sessionData = sessionResponse.data;
-      }
-      
-      if (sessionData) {
-        console.log('Session data extracted:', sessionData);
-        setSession(sessionData);
-        
-        // Initialisierung von userData
-        const userData = JSON.parse(localStorage.getItem('user'));
-        setUser(userData);
-        
-        // Clear any previous errors
-        setError(null);
-      } else {
-        console.error('No session data found in response');
-        setError('Keine Session-Daten gefunden');
-      }
-    } catch (err) {
-      console.error('Error loading session:', err);
-      setError('Fehler beim Laden der Session');
-    } finally {
-      setLoading(false);
-    }
+  const handleBack = () => {
+    navigate('/doctor/sessions');
   };
   
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
   
-  const handleRefresh = () => {
-    loadSessionData();
+  const handleVitalSignsUpdated = async () => {
+    try {
+      setLoading(true);
+      const response = await sessionService.getSessionById(id);
+      
+      // Extract session data from response
+      let updatedSessionData = null;
+      if (response && response.data && response.data.session) {
+        updatedSessionData = response.data.session;
+      } else if (response && response.session) {
+        updatedSessionData = response.session;
+      } else if (response && response.data) {
+        updatedSessionData = response.data;
+      }
+      
+      if (updatedSessionData) {
+        setSession(updatedSessionData);
+      }
+    } catch (err) {
+      console.error('Error refreshing session data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const getPriorityColor = (priority) => {
@@ -588,6 +620,14 @@ const SessionDetail = () => {
               <Typography variant="body1">{session.createdBy?.firstName ? `${session.createdBy.firstName} ${session.createdBy.lastName}` : 'Nicht zugewiesen'}</Typography>
             </Grid>
             
+            {/* Add injury time to patient information */}
+            {patientHistory.accidentTime && (
+              <Grid item xs={12} sm={6} md={4}>
+                <Typography variant="subtitle2" color="text.secondary">Zeitpunkt des Unfalls</Typography>
+                <Typography variant="body1">{patientHistory.accidentTime}</Typography>
+              </Grid>
+            )}
+            
             {/* Vital signs in patient info */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>Aktuelle Vitalwerte</Typography>
@@ -671,36 +711,6 @@ const SessionDetail = () => {
     
     return (
       <>
-        {/* Patient Information */}
-        <Card sx={{ mb: 3 }}>
-          <CardHeader title="Patientendaten" />
-          <Divider />
-          <CardContent>
-            <Grid container spacing={2}>
-              {patientHistory.personalInfo && patientHistory.personalInfo.age && (
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Alter</Typography>
-                  <Typography variant="body1">{patientHistory.personalInfo.age}</Typography>
-                </Grid>
-              )}
-              
-              {patientHistory.personalInfo && patientHistory.personalInfo.gender && (
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
-                  <Typography variant="body1">{patientHistory.personalInfo.gender}</Typography>
-                </Grid>
-              )}
-              
-              {patientHistory.accidentTime && (
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">Zeitpunkt des Unfalls</Typography>
-                  <Typography variant="body1">{patientHistory.accidentTime}</Typography>
-                </Grid>
-              )}
-            </Grid>
-          </CardContent>
-        </Card>
-        
         {/* Injury Information */}
         <Card sx={{ mb: 3 }}>
           <CardHeader title="Verletzungshergang" />
@@ -735,120 +745,74 @@ const SessionDetail = () => {
           </CardContent>
         </Card>
         
-        {/* Treatment So Far */}
-        {patientHistory.treatment && (
+        {/* Treatment Plan */}
+        {session.treatmentPlan && (
           <Card sx={{ mb: 3 }}>
-            <CardHeader title="Behandlung bisher" />
+            <CardHeader title="Behandlungsplan" />
             <Divider />
             <CardContent>
-              <Grid container spacing={2}>
-                {patientHistory.treatment.circulation && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Kreislauf</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.circulation}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.breathing && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Atmung</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.breathing}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.cSpine && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">C-Spine</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.cSpine}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.access && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Zugang</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.access}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.intubation && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Intubation</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.intubation}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.hemostasis && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Blutstillung</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.hemostasis}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.analgesia && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Schmerzbekämpfung</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.analgesia}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.perfusors && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Perfusoren</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.perfusors}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.medicationText && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Laufende Medikation</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.medicationText}</Typography>
-                  </Grid>
-                )}
-                
-                {patientHistory.treatment.extendedMeasures && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">Erweiterte Maßnahmen</Typography>
-                    <Typography variant="body1">{patientHistory.treatment.extendedMeasures}</Typography>
-                  </Grid>
-                )}
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Notes Section */}
-        {session.notes && session.notes.length > 0 && (
-          <Card sx={{ mb: 3 }}>
-            <CardHeader title="Notizen" />
-            <Divider />
-            <CardContent>
-              {session.notes.map((note, index) => (
-                <React.Fragment key={note.id || index}>
-                  <Box sx={{ mb: 2 }}>
-                    {note.title && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="subtitle1">{note.title}</Typography>
-                        {note.type && (
-                          <Chip 
-                            size="small" 
-                            label={note.type} 
-                            color="primary" 
-                            variant="outlined" 
-                            sx={{ ml: 1 }}
-                          />
-                        )}
-                      </Box>
-                    )}
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {note.content}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(note.createdAt).toLocaleString('de-DE')}
-                    </Typography>
-                  </Box>
-                  {index < session.notes.length - 1 && <Divider sx={{ my: 2 }} />}
-                </React.Fragment>
-              ))}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box>
+                  <Chip 
+                    label={
+                      session.treatmentPlan.status === 'DRAFT' ? 'Entwurf' :
+                      session.treatmentPlan.status === 'ACTIVE' ? 'Aktiv' :
+                      session.treatmentPlan.status === 'COMPLETED' ? 'Abgeschlossen' :
+                      session.treatmentPlan.status
+                    } 
+                    color={
+                      session.treatmentPlan.status === 'DRAFT' ? 'default' :
+                      session.treatmentPlan.status === 'ACTIVE' ? 'primary' :
+                      session.treatmentPlan.status === 'COMPLETED' ? 'success' :
+                      'default'
+                    }
+                  />
+                </Box>
+              </Box>
+              
+              {session.treatmentPlan.diagnosis && (
+                <Grid item xs={12} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">Diagnose</Typography>
+                  <Typography variant="body1">{session.treatmentPlan.diagnosis}</Typography>
+                </Grid>
+              )}
+              
+              {session.treatmentPlan.steps && session.treatmentPlan.steps.length > 0 ? (
+                <List>
+                  {session.treatmentPlan.steps.map((step, index) => (
+                    <React.Fragment key={step.id || index}>
+                      <ListItem>
+                        <ListItemText
+                          primary={`${index + 1}. ${step.description}`}
+                          secondary={
+                            <Chip 
+                              label={
+                                step.status === 'PENDING' ? 'Ausstehend' :
+                                step.status === 'IN_PROGRESS' ? 'In Bearbeitung' :
+                                step.status === 'COMPLETED' ? 'Abgeschlossen' :
+                                step.status
+                              } 
+                              size="small"
+                              color={
+                                step.status === 'PENDING' ? 'default' :
+                                step.status === 'IN_PROGRESS' ? 'primary' :
+                                step.status === 'COMPLETED' ? 'success' :
+                                'default'
+                              }
+                              sx={{ mt: 1 }}
+                            />
+                          }
+                        />
+                      </ListItem>
+                      {index < session.treatmentPlan.steps.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Keine Behandlungsschritte definiert.
+                </Typography>
+              )}
             </CardContent>
           </Card>
         )}
@@ -905,7 +869,7 @@ const SessionDetail = () => {
           
           // Final data refresh to ensure all data is up to date
           console.log('Reloading session data...');
-          await loadSessionData();
+          await handleVitalSignsUpdated();
         }
       }
     } catch (err) {
@@ -913,7 +877,7 @@ const SessionDetail = () => {
       setError('Fehler beim Übernehmen der Session');
       
       // Reload data in case of error to reset UI
-      await loadSessionData();
+      await handleVitalSignsUpdated();
     } finally {
       setActionLoading(false);
     }
@@ -991,23 +955,23 @@ const SessionDetail = () => {
           
           // Final data refresh
           console.log('Reloading session data...');
-          await loadSessionData();
+          await handleVitalSignsUpdated();
         } else {
           console.error('No response received from update API call');
           setError('Fehler beim Abschließen der Session: Keine Antwort vom Server');
-          await loadSessionData();
+          await handleVitalSignsUpdated();
         }
       } catch (apiError) {
         console.error('API call error:', apiError);
         setError(`Fehler beim Abschließen der Session: ${apiError.message || 'Unbekannter Fehler'}`);
-        await loadSessionData();
+        await handleVitalSignsUpdated();
       }
     } catch (error) {
       console.error('Error completing session:', error);
       setError('Fehler beim Abschließen der Session');
       
       // Reload data in case of error to reset UI
-      await loadSessionData();
+      await handleVitalSignsUpdated();
     } finally {
       setActionLoading(false);
     }
@@ -1018,189 +982,169 @@ const SessionDetail = () => {
     handleOpenCompletionDialog();
   };
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton 
-          onClick={() => navigate('/doctor/sessions')} 
-          sx={{ mr: 2 }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h5" component="h1">
-          Session Details
-        </Typography>
-        <Box sx={{ flexGrow: 1 }} />
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ py: 3 }}>
+        <Alert severity="error">{error}</Alert>
         <Button 
-          startIcon={<RefreshIcon />}
-          onClick={handleRefresh}
-          sx={{ mr: 1 }}
+          variant="outlined" 
+          startIcon={<ArrowBackIcon />} 
+          onClick={handleBack}
+          sx={{ mt: 2 }}
         >
-          Aktualisieren
+          Zurück zur Übersicht
         </Button>
       </Box>
+    );
+  }
+
+  if (!session) {
+    return (
+      <Box sx={{ py: 3 }}>
+        <Alert severity="info">Session nicht gefunden.</Alert>
+        <Button 
+          variant="outlined" 
+          startIcon={<ArrowBackIcon />} 
+          onClick={handleBack}
+          sx={{ mt: 2 }}
+        >
+          Zurück zur Übersicht
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Button 
+        variant="outlined" 
+        startIcon={<ArrowBackIcon />} 
+        onClick={handleBack}
+        sx={{ mb: 3 }}
+      >
+        Zurück zur Übersicht
+      </Button>
       
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      ) : successMessage ? (
-        <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
+      {/* Session Header */}
+      <SessionHeader session={session} />
+      
+      {/* Success Message */}
+      {successMessage && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 2 }}
+          onClose={() => setSuccessMessage(null)}
+        >
           {successMessage}
         </Alert>
-      ) : null}
+      )}
       
-      {session && (
-        <>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box>
-                <Typography variant="h6" component="h2">
-                  {session.title || 'Unbetitelte Session'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Session-ID: {session.patientCode || 'Unbekannt'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Erstellt am: {formatDate(session.createdAt)}
-                </Typography>
-              </Box>
-              <Box>
-                <Chip
-                  label={getStatusInfo(session.status).label}
-                  color={getStatusInfo(session.status).color}
-                  icon={getStatusInfo(session.status).icon}
-                  sx={{ mr: 1 }}
-                />
-                <Chip
-                  label={getPriorityLabel(session.priority)}
-                  color={getPriorityColor(session.priority)}
-                />
-              </Box>
-            </Box>
-            
-            <Divider sx={{ my: 2 }} />
-
-            {/* Show accept button only if status is OPEN */}
-            {session.status === 'OPEN' && (
-              <Box sx={{ mt: 2, mb: 3 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleAcceptSession}
-                  disabled={actionLoading}
-                  startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
-                >
-                  Session annehmen und starten
-                </Button>
-              </Box>
-            )}
-
-            {/* Show complete button only if status is IN_PROGRESS */}
-            {session.status === 'IN_PROGRESS' && (
-              <Box sx={{ mt: 2, mb: 3 }}>
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleCompleteSession}
-                  disabled={actionLoading}
-                  startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
-                >
-                  Session abschließen
-                </Button>
-              </Box>
-            )}
-            
-            <Box sx={{ my: 3 }}>
-              <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
-                <Tab label="Patienteninformationen" />
-                <Tab label="Vitalwerte" />
-                <Tab label="Sonstige Notizen" />
-              </Tabs>
-              
-              {tabValue === 0 && (
-                <>
-                  {renderPatientInfo()}
-                  {renderMedicalRecord()}
-                </>
-              )}
-              {tabValue === 1 && renderVitalSignsChart()}
-              {tabValue === 2 && session.notes && session.notes.length > 0 ? (
-                <Card>
-                  <CardHeader title="Sonstige Notizen" />
-                  <Divider />
-                  <CardContent>
-                    {session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').length > 0 ? (
-                      session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').map((note, index, filteredNotes) => (
-                        <React.Fragment key={note.id || index}>
-                          <Box sx={{ mb: 2 }}>
-                            {note.title && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1">{note.title}</Typography>
-                                {note.type && (
-                                  <Chip 
-                                    size="small" 
-                                    label={note.type} 
-                                    color="primary" 
-                                    variant="outlined" 
-                                    sx={{ ml: 1 }}
-                                  />
-                                )}
-                              </Box>
-                            )}
-                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                              {note.content}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(note.createdAt).toLocaleString('de-DE')}
-                            </Typography>
-                          </Box>
-                          {index < filteredNotes.length - 1 && <Divider sx={{ my: 2 }} />}
-                        </React.Fragment>
-                      ))
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Keine Notizen vorhanden.
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : tabValue === 2 ? (
-                <Card>
-                  <CardHeader title="Sonstige Notizen" />
-                  <Divider />
-                  <CardContent>
-                    <Typography variant="body2" color="text.secondary">
-                      Keine Notizen vorhanden.
-                    </Typography>
-                  </CardContent>
-                </Card>
-              ) : null}
-            </Box>
-          </Paper>
-        </>
+      {/* Session Actions */}
+      {session.status !== 'COMPLETED' && (
+        <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+          {session.status === 'OPEN' && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAcceptSession}
+              disabled={actionLoading}
+              startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+            >
+              Session übernehmen und starten
+            </Button>
+          )}
+          
+          {(session.status === 'ASSIGNED' || session.status === 'IN_PROGRESS') && 
+           session.assignedToId === user?.id && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleCompleteSession}
+              disabled={actionLoading}
+              startIcon={actionLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+            >
+              Session abschließen
+            </Button>
+          )}
+          
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleVitalSignsUpdated}
+            startIcon={<RefreshIcon />}
+            disabled={actionLoading}
+          >
+            Daten aktualisieren
+          </Button>
+        </Box>
       )}
 
-      {/* Session Completion Dialog */}
-      <Dialog open={openCompletionDialog} onClose={handleCloseCompletionDialog} maxWidth="sm" fullWidth>
+      {/* Tab Navigation */}
+      <Tabs
+        value={tabValue}
+        onChange={handleTabChange}
+        indicatorColor="primary"
+        textColor="primary"
+        variant="fullWidth"
+        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab icon={<PersonIcon />} label="Patienteninformationen" />
+        <Tab icon={<MonitorHeartIcon />} label="Vitalzeichen" />
+        <Tab icon={<LocalHospitalIcon />} label="Behandlung" />
+      </Tabs>
+      
+      {/* Tab Content */}
+      <div role="tabpanel" hidden={tabValue !== 0}>
+        {tabValue === 0 && (
+          <>
+            {/* Patient Info */}
+            <PatientInfo medicalRecord={session.medicalRecord} />
+            
+            {/* Injury Information */}
+            <InjuryInfo medicalRecord={session.medicalRecord} />
+            
+            {/* Previous Treatment - includes both medical record and treatment notes */}
+            <PreviousTreatment 
+              medicalRecord={session.medicalRecord}
+              notes={session.notes}
+            />
+          </>
+        )}
+      </div>
+      
+      <div role="tabpanel" hidden={tabValue !== 1}>
+        {tabValue === 1 && renderVitalSignsChart()}
+      </div>
+      
+      <div role="tabpanel" hidden={tabValue !== 2}>
+        {tabValue === 2 && (
+          <>
+            {/* Treatment Plan */}
+            <TreatmentPlan treatmentPlan={session.treatmentPlan} />
+          </>
+        )}
+      </div>
+      
+      {/* Completion Dialog */}
+      <Dialog open={openCompletionDialog} onClose={handleCloseCompletionDialog}>
         <DialogTitle>Session abschließen</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Bitte wählen Sie einen Grund für den Abschluss dieser Session:
-          </Typography>
-          
           <FormControl fullWidth margin="normal">
-            <InputLabel id="completion-reason-label">Abschlussgrund</InputLabel>
+            <InputLabel id="completion-reason-label">Grund für Abschluss</InputLabel>
             <Select
               labelId="completion-reason-label"
+              id="completion-reason"
               value={completionReason}
+              label="Grund für Abschluss"
               onChange={handleCompletionReasonChange}
-              label="Abschlussgrund"
-              required
             >
               {SESSION_COMPLETION_REASONS.map((reason) => (
                 <MenuItem key={reason.value} value={reason.value}>
@@ -1212,33 +1156,29 @@ const SessionDetail = () => {
           
           {isOtherReason && (
             <TextField
+              autoFocus
+              margin="dense"
+              id="completion-note"
+              label="Beschreibung"
+              type="text"
               fullWidth
-              margin="normal"
-              label="Sonstiger Grund (bitte spezifizieren)"
+              variant="outlined"
               value={completionNote}
               onChange={(e) => setCompletionNote(e.target.value)}
               multiline
-              rows={3}
-              required
-              placeholder="Bitte geben Sie den Grund an, warum die Session abgeschlossen wird..."
+              rows={4}
             />
           )}
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Hinweis: Nach dem Abschließen wird diese Session archiviert und kann nicht mehr bearbeitet werden.
-          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseCompletionDialog} color="inherit">
-            Abbrechen
-          </Button>
+          <Button onClick={handleCloseCompletionDialog}>Abbrechen</Button>
           <Button 
-            onClick={handleCompleteSessionWithReason} 
-            color="success" 
-            variant="contained"
+            onClick={handleCompleteSessionWithReason}
+            variant="contained" 
+            color="primary"
             disabled={!completionReason || (isOtherReason && !completionNote)}
           >
-            Session abschließen
+            Abschließen
           </Button>
         </DialogActions>
       </Dialog>
@@ -1246,4 +1186,4 @@ const SessionDetail = () => {
   );
 };
 
-export default SessionDetail; 
+export default DoctorSessionDetail; 
