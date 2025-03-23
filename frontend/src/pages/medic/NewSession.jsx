@@ -56,6 +56,8 @@ const NewSession = () => {
   const [generatedSessionId, setGeneratedSessionId] = useState('');
   const [showTemperature, setShowTemperature] = useState(false);
   const [showBloodGlucose, setShowBloodGlucose] = useState(false);
+  const [showPastMedicalHistory, setShowPastMedicalHistory] = useState(false);
+  const [showAllergies, setShowAllergies] = useState(false);
   
   // Generate a unique session ID on component mount
   useEffect(() => {
@@ -93,6 +95,8 @@ const NewSession = () => {
     // Patient data
     patientAge: '45', // Default age is now 45
     patientGender: 'MALE',
+    accidentTimeHour: '', // New field for accident time hour
+    accidentTimeMinute: '', // New field for accident time minute
     
     // Vital signs - setze Standardwerte
     heartRate: '60',  // Normalwert
@@ -106,18 +110,23 @@ const NewSession = () => {
     consciousness: 'ALERT',
     
     // Incident details
-    chiefComplaint: '',
+    injuryProcess: '', // renamed from chiefComplaint
+    injuries: '', // new field for injuries
     incidentDescription: '',
     pastMedicalHistory: '',
     allergies: '',
-    medications: ''
+    medications: '',
+    
+    // Treatment so far
+    treatmentSoFar: '' // new field for previous treatment
   });
   
   // Steps for the form
   const steps = [
     'Patienten-Daten',
+    'Verletzungshergang',
     'Vitalwerte',
-    'Vorfall',
+    'Behandlung bisher',
     'Übersicht'
   ];
   
@@ -148,6 +157,11 @@ const NewSession = () => {
       setLoading(true);
       setError(null);
       
+      // Format the accident time if both hour and minute are provided
+      const accidentTime = formData.accidentTimeHour && formData.accidentTimeMinute 
+        ? `${String(formData.accidentTimeHour).padStart(2, '0')}:${String(formData.accidentTimeMinute).padStart(2, '0')} Uhr` 
+        : '';
+      
       // Prepare data for API request
       const sessionData = {
         title: formData.sessionCategory || `Patient ${formData.patientCode}`,
@@ -161,11 +175,14 @@ const NewSession = () => {
               gender: formData.patientGender === 'MALE' ? 'Männlich' : 'Weiblich'
             },
             gender: formData.patientGender === 'MALE' ? 'Männlich' : 'Weiblich',
-            chiefComplaint: formData.chiefComplaint,
+            accidentTime: accidentTime,
+            injuryProcess: formData.injuryProcess,
+            injuries: formData.injuries,
             incidentDescription: formData.incidentDescription,
-            pastMedicalHistory: formData.pastMedicalHistory
+            pastMedicalHistory: showPastMedicalHistory ? formData.pastMedicalHistory : '',
+            treatmentSoFar: formData.treatmentSoFar
           }),
-          allergies: formData.allergies,
+          allergies: showAllergies ? formData.allergies : '',
           currentMedications: formData.medications
         }
       };
@@ -392,6 +409,48 @@ const NewSession = () => {
                   </Select>
                 </FormControl>
               </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', mt: 2 }}>
+                  <FormControl sx={{ width: 80, mr: 1 }} size="small">
+                    <InputLabel id="accident-hour-label">Std</InputLabel>
+                    <Select
+                      labelId="accident-hour-label"
+                      name="accidentTimeHour"
+                      value={formData.accidentTimeHour}
+                      onChange={handleChange}
+                      label="Std"
+                    >
+                      {Array.from({ length: 25 }, (_, i) => (
+                        <MenuItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  
+                  <FormControl sx={{ width: 80 }} size="small">
+                    <InputLabel id="accident-minute-label">Min</InputLabel>
+                    <Select
+                      labelId="accident-minute-label"
+                      name="accidentTimeMinute"
+                      value={formData.accidentTimeMinute}
+                      onChange={handleChange}
+                      label="Min"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => (
+                        <MenuItem key={i} value={String(i)}>
+                          {String(i).padStart(2, '0')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: 'center' }}>
+                    Unfallzeit
+                  </Typography>
+                </Box>
+              </Grid>
             </Grid>
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
@@ -413,6 +472,110 @@ const NewSession = () => {
         );
       
       case 1:
+        return (
+          <Box component="form" sx={{ p: { xs: 2, md: 3 } }}>
+            <Typography variant="h6" gutterBottom>
+              Verletzungshergang
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Verletzungshergang"
+                  name="injuryProcess"
+                  value={formData.injuryProcess}
+                  onChange={handleChange}
+                  margin="normal"
+                  multiline
+                  rows={4}
+                  placeholder="Detaillierte Beschreibung des Verletzungshergangs..."
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Verletzungen"
+                  name="injuries"
+                  value={formData.injuries}
+                  onChange={handleChange}
+                  margin="normal"
+                  multiline
+                  rows={3}
+                  placeholder="Beschreibung der Verletzungen..."
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                {!showPastMedicalHistory ? (
+                  <Button 
+                    fullWidth 
+                    variant="outlined" 
+                    startIcon={<AddIcon />}
+                    onClick={() => setShowPastMedicalHistory(true)}
+                    sx={{ mt: 2, height: '56px' }}
+                  >
+                    Vorerkrankungen hinzufügen
+                  </Button>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Relevante Vorerkrankungen"
+                    name="pastMedicalHistory"
+                    value={formData.pastMedicalHistory}
+                    onChange={handleChange}
+                    margin="normal"
+                    multiline
+                    rows={2}
+                    placeholder="z.B. Diabetes, Bluthochdruck, frühere Herzinfarkte..."
+                  />
+                )}
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                {!showAllergies ? (
+                  <Button 
+                    fullWidth 
+                    variant="outlined" 
+                    startIcon={<AddIcon />}
+                    onClick={() => setShowAllergies(true)}
+                    sx={{ mt: 2, height: '56px' }}
+                  >
+                    Allergien hinzufügen
+                  </Button>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Allergien"
+                    name="allergies"
+                    value={formData.allergies}
+                    onChange={handleChange}
+                    margin="normal"
+                    placeholder="z.B. Penicillin, Nüsse, Latex..."
+                  />
+                )}
+              </Grid>
+            </Grid>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+              <Button
+                variant="outlined"
+                onClick={handleBack}
+              >
+                Zurück
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleNext}
+              >
+                Weiter
+              </Button>
+            </Box>
+          </Box>
+        );
+        
+      case 2:
         return (
           <Box component="form" sx={{ p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom>
@@ -675,75 +838,25 @@ const NewSession = () => {
           </Box>
         );
         
-      case 2:
+      case 3:
         return (
           <Box component="form" sx={{ p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom>
-              Informationen zum Vorfall
+              Behandlung bisher
             </Typography>
             
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Hauptbeschwerde"
-                  name="chiefComplaint"
-                  value={formData.chiefComplaint}
-                  onChange={handleChange}
-                  margin="normal"
-                  placeholder="z.B. Akute Brustschmerzen, Atemnot"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Beschreibung des Vorfalls"
-                  name="incidentDescription"
-                  value={formData.incidentDescription}
+                  label="Beschreibung der bisherigen Behandlung"
+                  name="treatmentSoFar"
+                  value={formData.treatmentSoFar}
                   onChange={handleChange}
                   margin="normal"
                   multiline
                   rows={4}
-                  placeholder="Detaillierte Beschreibung des Vorfalls oder der Verletzung..."
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Relevante Vorerkrankungen"
-                  name="pastMedicalHistory"
-                  value={formData.pastMedicalHistory}
-                  onChange={handleChange}
-                  margin="normal"
-                  multiline
-                  rows={2}
-                  placeholder="z.B. Diabetes, Bluthochdruck, frühere Herzinfarkte..."
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Allergien"
-                  name="allergies"
-                  value={formData.allergies}
-                  onChange={handleChange}
-                  margin="normal"
-                  placeholder="z.B. Penicillin, Nüsse, Latex..."
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Aktuelle Medikation"
-                  name="medications"
-                  value={formData.medications}
-                  onChange={handleChange}
-                  margin="normal"
-                  placeholder="z.B. Aspirin, Insulin, Betablocker..."
+                  placeholder="Detaillierte Beschreibung der bisherigen Behandlung..."
                 />
               </Grid>
             </Grid>
@@ -765,7 +878,7 @@ const NewSession = () => {
           </Box>
         );
         
-      case 3:
+      case 4:
         return (
           <Box component="form" onSubmit={handleSubmit} sx={{ p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom>
@@ -813,7 +926,43 @@ const NewSession = () => {
                     Geschlecht: {GENDER_OPTIONS.find(g => g.value === formData.patientGender)?.label}
                   </Typography>
                 </Grid>
+                {formData.accidentTimeHour && formData.accidentTimeMinute && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2">
+                      Zeitpunkt des Unfalls: {`${String(formData.accidentTimeHour).padStart(2, '0')}:${String(formData.accidentTimeMinute).padStart(2, '0')} Uhr`}
+                    </Typography>
+                  </Grid>
+                )}
               </Grid>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography variant="subtitle1" fontWeight="bold">
+                Verletzungshergang
+              </Typography>
+              {formData.injuryProcess && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Verletzungshergang:</strong> {formData.injuryProcess}
+                </Typography>
+              )}
+              
+              {formData.injuries && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Verletzungen:</strong> {formData.injuries}
+                </Typography>
+              )}
+              
+              {showPastMedicalHistory && formData.pastMedicalHistory && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Vorerkrankungen:</strong> {formData.pastMedicalHistory}
+                </Typography>
+              )}
+              
+              {showAllergies && formData.allergies && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Allergien:</strong> {formData.allergies}
+                </Typography>
+              )}
               
               <Divider sx={{ my: 2 }} />
               
@@ -901,35 +1050,16 @@ const NewSession = () => {
               <Divider sx={{ my: 2 }} />
               
               <Typography variant="subtitle1" fontWeight="bold">
-                Vorfall / Anamnese
+                Behandlung bisher
               </Typography>
-              {formData.chiefComplaint && (
+              {formData.treatmentSoFar && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Hauptbeschwerde:</strong> {formData.chiefComplaint}
+                  {formData.treatmentSoFar}
                 </Typography>
               )}
-              
-              {formData.incidentDescription && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Beschreibung:</strong> {formData.incidentDescription}
-                </Typography>
-              )}
-              
-              {formData.pastMedicalHistory && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Vorerkrankungen:</strong> {formData.pastMedicalHistory}
-                </Typography>
-              )}
-              
-              {formData.allergies && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Allergien:</strong> {formData.allergies}
-                </Typography>
-              )}
-              
-              {formData.medications && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Medikation:</strong> {formData.medications}
+              {!formData.treatmentSoFar && (
+                <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
+                  Keine Behandlung dokumentiert
                 </Typography>
               )}
             </Paper>
