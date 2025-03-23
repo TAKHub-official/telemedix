@@ -27,6 +27,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import HistoryIcon from '@mui/icons-material/History';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -86,6 +87,7 @@ function DoctorLayout() {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/doctor/dashboard' },
     { text: 'Meine Sessions', icon: <ListAltIcon />, path: '/doctor/sessions' },
     { text: 'Archivierte Sessions', icon: <HistoryIcon />, path: '/doctor/archives' },
+    { text: 'Behandlungspläne', icon: <MedicalServicesIcon />, path: '/doctor/treatment-templates' },
   ];
 
   const drawer = (

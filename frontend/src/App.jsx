@@ -20,6 +20,8 @@ import Archives from './pages/doctor/Archives';
 import TestPage from './pages/doctor/TestPage';
 import ProfileSettings from './pages/doctor/ProfileSettings';
 import NotificationSettings from './pages/doctor/NotificationSettings';
+import TreatmentTemplates from './pages/doctor/TreatmentTemplates';
+import TreatmentTemplateEditor from './pages/doctor/TreatmentTemplateEditor';
 import MedicDashboard from './pages/medic/Dashboard';
 import MedicSessions from './pages/medic/Sessions';
 import MedicHistory from './pages/medic/History';
@@ -96,6 +98,9 @@ function App() {
         <Route path="sessions" element={<Sessions />} />
         <Route path="sessions/:id" element={<SessionDetail />} />
         <Route path="archives" element={<Archives />} />
+        <Route path="treatment-templates" element={<TreatmentTemplates />} />
+        <Route path="treatment-templates/new" element={<TreatmentTemplateEditor />} />
+        <Route path="treatment-templates/:id" element={<TreatmentTemplateEditor />} />
         <Route path="profile" element={<ProfileSettings />} />
         <Route path="settings" element={<NotificationSettings />} />
         <Route index element={<Navigate to="/doctor/dashboard" replace />} />

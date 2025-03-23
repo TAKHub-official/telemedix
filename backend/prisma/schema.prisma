@@ -27,6 +27,8 @@ model User {
   createdSessions Session[]   @relation("CreatedBy")
   assignedSessions Session[]  @relation("AssignedTo")
   notifications   Notification[]
+  treatmentTemplates TreatmentTemplate[]
+  favorites       UserFavorite[] // Relation to favorited templates
 }
 
 // Session model - represents a medical consultation session
@@ -149,4 +151,31 @@ model AuditLog {
   entityId    String?
   ipAddress   String?
   timestamp   DateTime  @default(now())
+}
+
+// Treatment Template model - represents reusable treatment plan templates created by doctors
+model TreatmentTemplate {
+  id              String      @id @default(uuid())
+  title           String
+  description     String?
+  createdById     String
+  createdBy       User        @relation(fields: [createdById], references: [id])
+  steps           String      // JSON formatted steps for the treatment plan
+  variables       String?     // JSON formatted variables that can be customized
+  isPublic        Boolean     @default(true) // Whether other doctors can use this template
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  userFavorites   UserFavorite[] // Users who have favorited this template
+}
+
+// User Favorite model - represents a favorited treatment template by a user
+model UserFavorite {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  treatmentTemplateId String
+  treatmentTemplate   TreatmentTemplate @relation(fields: [treatmentTemplateId], references: [id])
+  createdAt           DateTime  @default(now())
+
+  @@unique([userId, treatmentTemplateId]) // A user can favorite a template only once
 } 

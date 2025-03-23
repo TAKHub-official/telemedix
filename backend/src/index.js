@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/sessions');
 const userRoutes = require('./routes/users');
 const treatmentPlanRoutes = require('./routes/treatmentPlans');
+const treatmentTemplateRoutes = require('./routes/treatmentTemplates');
 const adminRoutes = require('./routes/admin');
 // const treatmentRoutes = require('./routes/treatments'); // We'll add this later
 
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/treatment-plans', treatmentPlanRoutes);
+app.use('/api/treatment-templates', treatmentTemplateRoutes);
 app.use('/api/admin', adminRoutes);
 // app.use('/api/treatments', treatmentRoutes); // We'll add this later
 
