@@ -486,60 +486,80 @@ const SessionDetail = () => {
             <Grid container spacing={2}>
               {medicalRecordData && (
                 <>
-                  {medicalRecordData.age && (
+                  {medicalRecordData.personalInfo && medicalRecordData.personalInfo.age && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body1">
-                        <strong>Alter:</strong> {medicalRecordData.age}
+                        <strong>Alter:</strong> {medicalRecordData.personalInfo.age}
                       </Typography>
                     </Grid>
                   )}
                   
-                  {medicalRecordData.gender && (
+                  {medicalRecordData.personalInfo && medicalRecordData.personalInfo.gender && (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body1">
-                        <strong>Geschlecht:</strong> {
-                          medicalRecordData.gender === 'MALE' ? 'Männlich' :
-                          medicalRecordData.gender === 'FEMALE' ? 'Weiblich' :
-                          medicalRecordData.gender
-                        }
+                        <strong>Geschlecht:</strong> {medicalRecordData.personalInfo.gender}
                       </Typography>
                     </Grid>
                   )}
                   
-                  {medicalRecordData.chiefComplaint && (
-                    <Grid item xs={12}>
+                  {medicalRecordData.accidentTime && (
+                    <Grid item xs={12} sm={6}>
                       <Typography variant="body1">
-                        <strong>Hauptbeschwerde:</strong> {medicalRecordData.chiefComplaint}
-                      </Typography>
-                    </Grid>
-                  )}
-                  
-                  {medicalRecordData.incidentDescription && (
-                    <Grid item xs={12}>
-                      <Typography variant="body1">
-                        <strong>Beschreibung des Vorfalls:</strong>
-                        <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
-                          {medicalRecordData.incidentDescription}
-                        </Box>
-                      </Typography>
-                    </Grid>
-                  )}
-                  
-                  {medicalRecordData.pastMedicalHistory && (
-                    <Grid item xs={12}>
-                      <Typography variant="body1">
-                        <strong>Vorerkrankungen:</strong>
-                        <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
-                          {medicalRecordData.pastMedicalHistory}
-                        </Box>
+                        <strong>Zeitpunkt des Unfalls:</strong> {medicalRecordData.accidentTime}
                       </Typography>
                     </Grid>
                   )}
                 </>
               )}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Injury Information */}
+      {medicalRecordData && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Verletzungshergang
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {medicalRecordData.injuryProcess && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Verletzungshergang:</strong>
+                    <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                      {medicalRecordData.injuryProcess}
+                    </Box>
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.injuries && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Verletzungen:</strong>
+                    <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                      {medicalRecordData.injuries}
+                    </Box>
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.pastMedicalHistory && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Vorerkrankungen:</strong>
+                    <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                      {medicalRecordData.pastMedicalHistory}
+                    </Box>
+                  </Typography>
+                </Grid>
+              )}
               
               {session.medicalRecord.allergies && (
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <Typography variant="body1">
                     <strong>Allergien:</strong> {session.medicalRecord.allergies}
                   </Typography>
@@ -547,9 +567,113 @@ const SessionDetail = () => {
               )}
               
               {session.medicalRecord.currentMedications && (
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <Typography variant="body1">
                     <strong>Aktuelle Medikation:</strong> {session.medicalRecord.currentMedications}
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Previous Treatment */}
+      {medicalRecordData && medicalRecordData.treatment && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Behandlung bisher
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {medicalRecordData.treatment.circulation && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Kreislauf:</strong> {medicalRecordData.treatment.circulation}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.breathing && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Atmung:</strong> {medicalRecordData.treatment.breathing}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.cSpine && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>C-Spine:</strong> {medicalRecordData.treatment.cSpine}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.access && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Zugang:</strong> {medicalRecordData.treatment.access}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.intubation && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Intubation:</strong> {medicalRecordData.treatment.intubation}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.hemostasis && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Blutstillung:</strong> {medicalRecordData.treatment.hemostasis}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.analgesia && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Schmerzbekämpfung:</strong> {medicalRecordData.treatment.analgesia}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.perfusors && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Perfusoren:</strong> {medicalRecordData.treatment.perfusors}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.medicationText && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Laufende Medikation:</strong> {medicalRecordData.treatment.medicationText}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {medicalRecordData.treatment.extendedMeasures && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Erweiterte Maßnahmen:</strong> {medicalRecordData.treatment.extendedMeasures}
+                  </Typography>
+                </Grid>
+              )}
+              
+              {session.notes && session.notes.length > 0 && session.notes.find(note => note.type === 'TREATMENT_DESCRIPTION') && (
+                <Grid item xs={12}>
+                  <Typography variant="body1">
+                    <strong>Behandlungsdetails:</strong>
+                    <Box component="p" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                      {session.notes.find(note => note.type === 'TREATMENT_DESCRIPTION')?.content}
+                    </Box>
                   </Typography>
                 </Grid>
               )}
@@ -1080,24 +1204,48 @@ const SessionDetail = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Notizen
+            Sonstige Notizen
           </Typography>
           
-          {session.notes && session.notes.length > 0 ? (
+          {session.notes && session.notes.length > 0 && session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').length > 0 ? (
             <List>
-              {session.notes.map((note, index) => (
+              {session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').map((note, index, filteredNotes) => (
                 <React.Fragment key={note.id}>
                   <ListItem alignItems="flex-start">
                     <ListItemText
-                      primary={<Typography variant="body1">{note.content}</Typography>}
+                      primary={
+                        note.title ? (
+                          <Typography variant="subtitle1" component="div">
+                            {note.title}
+                            {note.type && (
+                              <Chip
+                                size="small"
+                                label={note.type}
+                                color="primary"
+                                variant="outlined"
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                          </Typography>
+                        ) : null
+                      }
                       secondary={
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(note.createdAt).toLocaleString('de-DE')}
-                        </Typography>
+                        <>
+                          <Typography 
+                            variant="body1" 
+                            component="div" 
+                            sx={{ mt: note.title ? 1 : 0, whiteSpace: 'pre-wrap' }}
+                          >
+                            {note.content}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(note.createdAt).toLocaleString('de-DE')}
+                          </Typography>
+                        </>
                       }
                     />
                   </ListItem>
-                  {index < session.notes.length - 1 && <Divider />}
+                  {index < filteredNotes.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
             </List>

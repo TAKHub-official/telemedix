@@ -102,12 +102,12 @@ const sessionService = {
   /**
    * Add a note to a session
    * @param {string} sessionId - Session ID
-   * @param {string} content - Note content
+   * @param {Object} noteData - Note data with title, content, and type
    * @returns {Promise<Object>} - Added note
    */
-  addNote: async (sessionId, content) => {
+  addNote: async (sessionId, noteData) => {
     try {
-      const response = await api.post(`/sessions/${sessionId}/notes`, { content });
+      const response = await api.post(`/sessions/${sessionId}/notes`, noteData);
       return response.data;
     } catch (error) {
       console.error(`Error adding note to session ${sessionId}:`, error);

@@ -666,40 +666,193 @@ const SessionDetail = () => {
     const currentMedications = medicalRecord.currentMedications || 'Keine angegeben';
     const allergies = medicalRecord.allergies || 'Keine bekannt';
     const description = patientHistory.incidentDescription || patientHistory.description || 'Keine Beschreibung vorhanden';
+    const injuries = patientHistory.injuries || 'Nicht angegeben';
+    const injuryProcess = patientHistory.injuryProcess || 'Nicht angegeben';
     
     return (
-      <Card sx={{ mb: 3 }}>
-        <CardHeader title="Medizinische Anamnese" />
-        <Divider />
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Hauptbeschwerde</Typography>
-              <Typography variant="body1">{mainComplaint}</Typography>
+      <>
+        {/* Patient Information */}
+        <Card sx={{ mb: 3 }}>
+          <CardHeader title="Patientendaten" />
+          <Divider />
+          <CardContent>
+            <Grid container spacing={2}>
+              {patientHistory.personalInfo && patientHistory.personalInfo.age && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Alter</Typography>
+                  <Typography variant="body1">{patientHistory.personalInfo.age}</Typography>
+                </Grid>
+              )}
+              
+              {patientHistory.personalInfo && patientHistory.personalInfo.gender && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Geschlecht</Typography>
+                  <Typography variant="body1">{patientHistory.personalInfo.gender}</Typography>
+                </Grid>
+              )}
+              
+              {patientHistory.accidentTime && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">Zeitpunkt des Unfalls</Typography>
+                  <Typography variant="body1">{patientHistory.accidentTime}</Typography>
+                </Grid>
+              )}
             </Grid>
-            
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">Beschreibung</Typography>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{description}</Typography>
+          </CardContent>
+        </Card>
+        
+        {/* Injury Information */}
+        <Card sx={{ mb: 3 }}>
+          <CardHeader title="Verletzungshergang" />
+          <Divider />
+          <CardContent>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Verletzungshergang</Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{injuryProcess}</Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Verletzungen</Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{injuries}</Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Vorerkrankungen</Typography>
+                <Typography variant="body1">{pastMedicalHistory}</Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Allergien</Typography>
+                <Typography variant="body1">{allergies}</Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Aktuelle Medikation</Typography>
+                <Typography variant="body1">{currentMedications}</Typography>
+              </Grid>
             </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Vorerkrankungen</Typography>
-              <Typography variant="body1">{pastMedicalHistory}</Typography>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Aktuelle Medikation</Typography>
-              <Typography variant="body1">{currentMedications}</Typography>
-            </Grid>
-            
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Allergien</Typography>
-              <Typography variant="body1">{allergies}</Typography>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        
+        {/* Treatment So Far */}
+        {patientHistory.treatment && (
+          <Card sx={{ mb: 3 }}>
+            <CardHeader title="Behandlung bisher" />
+            <Divider />
+            <CardContent>
+              <Grid container spacing={2}>
+                {patientHistory.treatment.circulation && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Kreislauf</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.circulation}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.breathing && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Atmung</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.breathing}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.cSpine && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">C-Spine</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.cSpine}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.access && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Zugang</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.access}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.intubation && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Intubation</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.intubation}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.hemostasis && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Blutstillung</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.hemostasis}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.analgesia && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Schmerzbekämpfung</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.analgesia}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.perfusors && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Perfusoren</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.perfusors}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.medicationText && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Laufende Medikation</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.medicationText}</Typography>
+                  </Grid>
+                )}
+                
+                {patientHistory.treatment.extendedMeasures && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">Erweiterte Maßnahmen</Typography>
+                    <Typography variant="body1">{patientHistory.treatment.extendedMeasures}</Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Notes Section */}
+        {session.notes && session.notes.length > 0 && (
+          <Card sx={{ mb: 3 }}>
+            <CardHeader title="Notizen" />
+            <Divider />
+            <CardContent>
+              {session.notes.map((note, index) => (
+                <React.Fragment key={note.id || index}>
+                  <Box sx={{ mb: 2 }}>
+                    {note.title && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle1">{note.title}</Typography>
+                        {note.type && (
+                          <Chip 
+                            size="small" 
+                            label={note.type} 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </Box>
+                    )}
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {note.content}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(note.createdAt).toLocaleString('de-DE')}
+                    </Typography>
+                  </Box>
+                  {index < session.notes.length - 1 && <Divider sx={{ my: 2 }} />}
+                </React.Fragment>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </>
     );
   };
 
@@ -966,6 +1119,7 @@ const SessionDetail = () => {
               <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
                 <Tab label="Patienteninformationen" />
                 <Tab label="Vitalwerte" />
+                <Tab label="Sonstige Notizen" />
               </Tabs>
               
               {tabValue === 0 && (
@@ -975,6 +1129,57 @@ const SessionDetail = () => {
                 </>
               )}
               {tabValue === 1 && renderVitalSignsChart()}
+              {tabValue === 2 && session.notes && session.notes.length > 0 ? (
+                <Card>
+                  <CardHeader title="Sonstige Notizen" />
+                  <Divider />
+                  <CardContent>
+                    {session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').length > 0 ? (
+                      session.notes.filter(note => note.type !== 'TREATMENT_DESCRIPTION').map((note, index, filteredNotes) => (
+                        <React.Fragment key={note.id || index}>
+                          <Box sx={{ mb: 2 }}>
+                            {note.title && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle1">{note.title}</Typography>
+                                {note.type && (
+                                  <Chip 
+                                    size="small" 
+                                    label={note.type} 
+                                    color="primary" 
+                                    variant="outlined" 
+                                    sx={{ ml: 1 }}
+                                  />
+                                )}
+                              </Box>
+                            )}
+                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {note.content}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(note.createdAt).toLocaleString('de-DE')}
+                            </Typography>
+                          </Box>
+                          {index < filteredNotes.length - 1 && <Divider sx={{ my: 2 }} />}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Keine Notizen vorhanden.
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : tabValue === 2 ? (
+                <Card>
+                  <CardHeader title="Sonstige Notizen" />
+                  <Divider />
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      Keine Notizen vorhanden.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ) : null}
             </Box>
           </Paper>
         </>

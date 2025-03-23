@@ -58,6 +58,7 @@ const NewSession = () => {
   const [showBloodGlucose, setShowBloodGlucose] = useState(false);
   const [showPastMedicalHistory, setShowPastMedicalHistory] = useState(false);
   const [showAllergies, setShowAllergies] = useState(false);
+  const [medicationText, setMedicationText] = useState(''); // New state for medications
   
   // Generate a unique session ID on component mount
   useEffect(() => {
@@ -118,7 +119,38 @@ const NewSession = () => {
     medications: '',
     
     // Treatment so far
-    treatmentSoFar: '' // new field for previous treatment
+    treatmentSoFar: '', // free text field for additional treatment info
+    
+    // Treatment options
+    accessPvk: false, // Zugang: PVK
+    accessIo: false,  // Zugang: IO
+    accessZvk: false, // Zugang: ZVK
+    
+    perfusors: '',     // Perfusoren (text field)
+    reanimation: '',   // Reanimation (text field)
+    
+    intubationSga: false,      // Intubation: SGA
+    intubationTubus: false,    // Intubation: Endotr. Tubus
+    intubationKoniotomie: false, // Intubation: Koniotomie
+    
+    ventilationManual: false,  // Beatmung: manuell
+    ventilationMechanical: false, // Beatmung: maschinell
+    
+    thoraxDrainageRight: false, // Thorax Drainage: rechts
+    thoraxDrainageLeft: false,  // Thorax Drainage: links
+    
+    decompressionRight: false, // Dekompression: rechts
+    decompressionLeft: false,  // Dekompression: links
+    
+    extendedNarcosis: false,   // Erweiterte Maßnahmen: Narkose
+    extendedStiffneck: false,  // Erweiterte Maßnahmen: Stiffneck
+    extendedVacuumMattress: false, // Erweiterte Maßnahmen: Vakuum-Matratze
+    extendedGastricTube: false,    // Erweiterte Maßnahmen: Magensonde
+    extendedUrinaryCatheter: false, // Erweiterte Maßnahmen: Urinkatheter
+    
+    hemostasisTq: false,       // Blutstillung: TQ
+    hemostasisDv: false,       // Blutstillung: Israeli
+    hemostasisWp: false,       // Blutstillung: WP
   });
   
   // Steps for the form
@@ -258,6 +290,129 @@ const NewSession = () => {
           value: formData.consciousness,
           unit: 'AVPU'
         });
+        
+        // Add treatment info
+        // Build treatment description string from the selected options
+        let treatmentDescription = '';
+        
+        // Access
+        if (formData.accessPvk || formData.accessIo || formData.accessZvk) {
+          treatmentDescription += 'Zugang: ';
+          if (formData.accessPvk) treatmentDescription += 'PVK, ';
+          if (formData.accessIo) treatmentDescription += 'IO, ';
+          if (formData.accessZvk) treatmentDescription += 'ZVK, ';
+          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+        } else {
+          treatmentDescription += 'Zugang: Kein. ';
+        }
+        
+        // Perfusoren
+        if (formData.perfusors) {
+          treatmentDescription += `Perfusoren: ${formData.perfusors}. `;
+        }
+        else {
+          treatmentDescription += 'Perfusoren: Keine. ';
+        }
+        
+        // Laufende Medikation
+        if (medicationText) {
+          treatmentDescription += `Laufende Medikation: ${medicationText}. `;
+        }
+        else {
+          treatmentDescription += 'Laufende Medikation: Keine. ';
+        }
+        
+        // Reanimation
+        if (formData.reanimation) {
+          treatmentDescription += `Reanimation: ${formData.reanimation}. `;
+        }
+        else {
+          treatmentDescription += 'Reanimation: Keine. ';
+        }
+        
+        // Intubation
+        if (formData.intubationSga || formData.intubationTubus || formData.intubationKoniotomie) {
+          treatmentDescription += 'Intubation: ';
+          if (formData.intubationSga) treatmentDescription += 'SGA. ';
+          if (formData.intubationTubus) treatmentDescription += 'Endotr. Tubus. ';
+          if (formData.intubationKoniotomie) treatmentDescription += 'Koniotomie. ';
+        } else {
+          treatmentDescription += 'Intubation: Keine. ';
+        }
+        
+        // Beatmung
+        if (formData.ventilationManual || formData.ventilationMechanical) {
+          treatmentDescription += 'Beatmung: ';
+          if (formData.ventilationManual) treatmentDescription += 'Manuell. ';
+          if (formData.ventilationMechanical) treatmentDescription += 'Maschinell. ';
+        }
+        else {
+          treatmentDescription += 'Beatmung: Keine. ';
+        }
+        
+        // Thorax Drainage
+        if (formData.thoraxDrainageRight || formData.thoraxDrainageLeft) {
+          treatmentDescription += 'Thorax Drainage: ';
+          if (formData.thoraxDrainageRight) treatmentDescription += 'Rechts, ';
+          if (formData.thoraxDrainageLeft) treatmentDescription += 'Links, ';
+          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+        }
+        else {
+          treatmentDescription += 'Thorax Drainage: Keine. ';
+        }
+        
+        // Dekompression
+        if (formData.decompressionRight || formData.decompressionLeft) {
+          treatmentDescription += 'Dekompression: ';
+          if (formData.decompressionRight) treatmentDescription += 'Rechts, ';
+          if (formData.decompressionLeft) treatmentDescription += 'Links, ';
+          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+        }
+        else {
+          treatmentDescription += 'Dekompression: Keine. ';
+        }
+        
+        // Erweiterte Maßnahmen
+        if (formData.extendedNarcosis || formData.extendedStiffneck || 
+            formData.extendedVacuumMattress || formData.extendedGastricTube ||
+            formData.extendedUrinaryCatheter) {
+          treatmentDescription += 'Erweiterte Maßnahmen: ';
+          if (formData.extendedNarcosis) treatmentDescription += 'Narkose, ';
+          if (formData.extendedStiffneck) treatmentDescription += 'Stiffneck, ';
+          if (formData.extendedVacuumMattress) treatmentDescription += 'Vakuum-Matratze, ';
+          if (formData.extendedGastricTube) treatmentDescription += 'Magensonde, ';
+          if (formData.extendedUrinaryCatheter) treatmentDescription += 'Urinkatheter, ';
+          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+        }
+        else {
+          treatmentDescription += 'Erweiterte Maßnahmen: Keine. ';
+        }
+        
+        // Blutstillung
+        if (formData.hemostasisTq || formData.hemostasisDv || formData.hemostasisWp) {
+          treatmentDescription += 'Blutstillung: ';
+          if (formData.hemostasisTq) treatmentDescription += 'TQ, ';
+          if (formData.hemostasisDv) treatmentDescription += 'Israeli, ';
+          if (formData.hemostasisWp) treatmentDescription += 'WP, ';
+          treatmentDescription = treatmentDescription.replace(/,\s*$/, '. '); // Replace trailing comma with period
+        }
+        else {
+          treatmentDescription += 'Blutstillung: Keine. ';
+        }
+        
+        // Add any additional free text
+        if (formData.treatmentSoFar) {
+          treatmentDescription += `${formData.treatmentSoFar}`;
+        }
+        
+        // Add treatment note if there's any treatment description
+        if (treatmentDescription) {
+          await sessionService.addNote(sessionId, {
+            title: 'Bisherige Behandlung',
+            content: treatmentDescription,
+            type: 'TREATMENT'
+          });
+        }
         
         setSuccess(true);
         
@@ -494,6 +649,335 @@ const NewSession = () => {
               </Grid>
               
               <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Verletzungen:
+                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: 1, 
+                  mb: 2, 
+                  maxWidth: '100%',
+                  overflow: 'auto'
+                }}>
+                  {/* Verletzungstypen */}
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Wunde` : 'Wunde'
+                      }));
+                    }}
+                  >
+                    Wunde
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Amputation` : 'Amputation'
+                      }));
+                    }}
+                  >
+                    Amputation
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Verbrennung` : 'Verbrennung'
+                      }));
+                    }}
+                  >
+                    Verbrennung
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Fraktur` : 'Fraktur'
+                      }));
+                    }}
+                  >
+                    Fraktur
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Pneu` : 'Pneu'
+                      }));
+                    }}
+                  >
+                    Pneu
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} SHT` : 'SHT'
+                      }));
+                    }}
+                  >
+                    SHT
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Kritische Blutung` : 'Kritische Blutung'
+                      }));
+                    }}
+                  >
+                    Kritische Blutung
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Stumpfes` : 'Stumpfes'
+                      }));
+                    }}
+                  >
+                    Stumpfes
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Zentralisation` : 'Zentralisation'
+                      }));
+                    }}
+                  >
+                    Zentralisation
+                  </Button>
+                  
+                  {/* Körperteile */}
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Kopf` : 'Kopf'
+                      }));
+                    }}
+                  >
+                    Kopf
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Gesicht` : 'Gesicht'
+                      }));
+                    }}
+                  >
+                    Gesicht
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Hals` : 'Hals'
+                      }));
+                    }}
+                  >
+                    Hals
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Brust` : 'Brust'
+                      }));
+                    }}
+                  >
+                    Brust
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Abdomen` : 'Abdomen'
+                      }));
+                    }}
+                  >
+                    Abdomen
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Wirbelsäule` : 'Wirbelsäule'
+                      }));
+                    }}
+                  >
+                    Wirbelsäule
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Rücken` : 'Rücken'
+                      }));
+                    }}
+                  >
+                    Rücken
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Becken` : 'Becken'
+                      }));
+                    }}
+                  >
+                    Becken
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Arm` : 'Arm'
+                      }));
+                    }}
+                  >
+                    Arm
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Hand` : 'Hand'
+                      }));
+                    }}
+                  >
+                    Hand
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Bein` : 'Bein'
+                      }));
+                    }}
+                  >
+                    Bein
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} Fuß` : 'Fuß'
+                      }));
+                    }}
+                  >
+                    Fuß
+                  </Button>
+                  
+                  {/* Zusätzliche Beschreibungen */}
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} rechts` : 'rechts'
+                      }));
+                    }}
+                  >
+                    rechts
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} links` : 'links'
+                      }));
+                    }}
+                  >
+                    links
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} mit` : 'mit'
+                      }));
+                    }}
+                  >
+                    mit
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries} und` : 'und'
+                      }));
+                    }}
+                  >
+                    und
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        injuries: prev.injuries ? `${prev.injuries},` : ','
+                      }));
+                    }}
+                  >
+                    ,
+                  </Button>
+                </Box>
                 <TextField
                   fullWidth
                   label="Verletzungen"
@@ -846,17 +1330,616 @@ const NewSession = () => {
             </Typography>
             
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              {/* Zugang */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Zugang:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.accessPvk ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        accessPvk: !prev.accessPvk
+                      }));
+                    }}
+                  >
+                    PVK
+                  </Button>
+                  <Button 
+                    variant={formData.accessIo ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        accessIo: !prev.accessIo
+                      }));
+                    }}
+                  >
+                    IO
+                  </Button>
+                  <Button 
+                    variant={formData.accessZvk ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        accessZvk: !prev.accessZvk
+                      }));
+                    }}
+                  >
+                    ZVK
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Perfusoren */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Perfusoren:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
                 <TextField
                   fullWidth
-                  label="Beschreibung der bisherigen Behandlung"
+                  name="perfusors"
+                  value={formData.perfusors}
+                  onChange={handleChange}
+                  placeholder="Perfusoren..."
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              
+              {/* Laufende Medikation */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Laufende Medikation:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: 1, 
+                  mb: 1, 
+                  maxWidth: '100%',
+                  overflow: 'auto'
+                }}>
+                  {/* Medikamente */}
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Ketamin` : 'Ketamin');
+                    }}
+                  >
+                    Ketamin
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Midazolam` : 'Midazolam');
+                    }}
+                  >
+                    Midazolam
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Paracetamol` : 'Paracetamol');
+                    }}
+                  >
+                    Paracetamol
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Fentanyl` : 'Fentanyl');
+                    }}
+                  >
+                    Fentanyl
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Novamin` : 'Novamin');
+                    }}
+                  >
+                    Novamin
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Lidocain` : 'Lidocain');
+                    }}
+                  >
+                    Lidocain
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Breitbandantibiotika` : 'Breitbandantibiotika');
+                    }}
+                  >
+                    Breitbandantibiotika
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Tranexamsäure` : 'Tranexamsäure');
+                    }}
+                  >
+                    Tranexamsäure
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Epinephrin` : 'Epinephrin');
+                    }}
+                  >
+                    Epinephrin
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} NaCl` : 'NaCl');
+                    }}
+                  >
+                    NaCl
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} Jono/Stero` : 'Jono/Stero');
+                    }}
+                  >
+                    Jono/Stero
+                  </Button>
+                </Box>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: 1, 
+                  mb: 1, 
+                  maxWidth: '100%',
+                  overflow: 'auto'
+                }}>
+                  {/* Einheiten und Mengen */}
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f5f5f5' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} mg` : 'mg');
+                    }}
+                  >
+                    mg
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f5f5f5' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} mcg` : 'mcg');
+                    }}
+                  >
+                    mcg
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f5f5f5' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} ml` : 'ml');
+                    }}
+                  >
+                    ml
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f5f5f5' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} in` : 'in');
+                    }}
+                  >
+                    in
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 1` : '1');
+                    }}
+                  >
+                    1
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 5` : '5');
+                    }}
+                  >
+                    5
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 10` : '10');
+                    }}
+                  >
+                    10
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 20` : '20');
+                    }}
+                  >
+                    20
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 100` : '100');
+                    }}
+                  >
+                    100
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                    onClick={() => {
+                      setMedicationText(prev => prev ? `${prev} 500` : '500');
+                    }}
+                  >
+                    500
+                  </Button>
+                </Box>
+                <TextField
+                  fullWidth
+                  name="medications"
+                  value={medicationText}
+                  onChange={(e) => setMedicationText(e.target.value)}
+                  placeholder="Medikation..."
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              
+              {/* Reanimation */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Reanimation:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <TextField
+                  fullWidth
+                  name="reanimation"
+                  value={formData.reanimation}
+                  onChange={handleChange}
+                  placeholder="Reanimation..."
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              
+              {/* Intubation */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Intubation:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.intubationSga ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        intubationSga: !prev.intubationSga,
+                        intubationTubus: false,
+                        intubationKoniotomie: false
+                      }));
+                    }}
+                  >
+                    SGA
+                  </Button>
+                  <Button 
+                    variant={formData.intubationTubus ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        intubationSga: false,
+                        intubationTubus: !prev.intubationTubus,
+                        intubationKoniotomie: false
+                      }));
+                    }}
+                  >
+                    Endotr. Tubus
+                  </Button>
+                  <Button 
+                    variant={formData.intubationKoniotomie ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        intubationSga: false,
+                        intubationTubus: false,
+                        intubationKoniotomie: !prev.intubationKoniotomie
+                      }));
+                    }}
+                  >
+                    Koniotomie
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Beatmung */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Beatmung:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.ventilationManual ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        ventilationManual: !prev.ventilationManual,
+                        ventilationMechanical: false
+                      }));
+                    }}
+                  >
+                    manuell
+                  </Button>
+                  <Button 
+                    variant={formData.ventilationMechanical ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        ventilationManual: false,
+                        ventilationMechanical: !prev.ventilationMechanical
+                      }));
+                    }}
+                  >
+                    maschinell
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Thorax Drainage */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Thorax Drainage:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.thoraxDrainageRight ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        thoraxDrainageRight: !prev.thoraxDrainageRight
+                      }));
+                    }}
+                  >
+                    rechts
+                  </Button>
+                  <Button 
+                    variant={formData.thoraxDrainageLeft ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        thoraxDrainageLeft: !prev.thoraxDrainageLeft
+                      }));
+                    }}
+                  >
+                    links
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Dekompression */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Dekompression:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.decompressionRight ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        decompressionRight: !prev.decompressionRight
+                      }));
+                    }}
+                  >
+                    rechts
+                  </Button>
+                  <Button 
+                    variant={formData.decompressionLeft ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        decompressionLeft: !prev.decompressionLeft
+                      }));
+                    }}
+                  >
+                    links
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Erweiterte Maßnahmen */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Erweiterte Maßnahmen:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.extendedNarcosis ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        extendedNarcosis: !prev.extendedNarcosis
+                      }));
+                    }}
+                  >
+                    Narkose
+                  </Button>
+                  <Button 
+                    variant={formData.extendedStiffneck ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        extendedStiffneck: !prev.extendedStiffneck
+                      }));
+                    }}
+                  >
+                    Stiffneck
+                  </Button>
+                  <Button 
+                    variant={formData.extendedVacuumMattress ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        extendedVacuumMattress: !prev.extendedVacuumMattress
+                      }));
+                    }}
+                  >
+                    Vakuum-Matratze
+                  </Button>
+                  <Button 
+                    variant={formData.extendedGastricTube ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        extendedGastricTube: !prev.extendedGastricTube
+                      }));
+                    }}
+                  >
+                    Magensonde
+                  </Button>
+                  <Button 
+                    variant={formData.extendedUrinaryCatheter ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        extendedUrinaryCatheter: !prev.extendedUrinaryCatheter
+                      }));
+                    }}
+                  >
+                    Urinkatheter
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Blutstillung */}
+              <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle2">
+                  Blutstillung:
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={9}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Button 
+                    variant={formData.hemostasisTq ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        hemostasisTq: !prev.hemostasisTq
+                      }));
+                    }}
+                  >
+                    TQ
+                  </Button>
+                  <Button 
+                    variant={formData.hemostasisDv ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        hemostasisDv: !prev.hemostasisDv
+                      }));
+                    }}
+                  >
+                    Israeli
+                  </Button>
+                  <Button 
+                    variant={formData.hemostasisWp ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        hemostasisWp: !prev.hemostasisWp
+                      }));
+                    }}
+                  >
+                    WP
+                  </Button>
+                </Box>
+              </Grid>
+              
+              {/* Free text field for additional treatment info */}
+              <Grid item xs={12} sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Weitere Behandlungsmaßnahmen"
                   name="treatmentSoFar"
                   value={formData.treatmentSoFar}
                   onChange={handleChange}
                   margin="normal"
                   multiline
                   rows={4}
-                  placeholder="Detaillierte Beschreibung der bisherigen Behandlung..."
+                  placeholder="Weitere Details zur bisherigen Behandlung..."
                 />
               </Grid>
             </Grid>
@@ -1052,14 +2135,107 @@ const NewSession = () => {
               <Typography variant="subtitle1" fontWeight="bold">
                 Behandlung bisher
               </Typography>
+              
+              <Grid container spacing={2}>
+                {/* Zugang summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Zugang:</strong> {formData.accessPvk ? 'PVK ' : ''}
+                    {formData.accessIo ? 'IO ' : ''}
+                    {formData.accessZvk ? 'ZVK ' : ''}
+                    {!formData.accessPvk && !formData.accessIo && !formData.accessZvk && 
+                      'Kein'}
+                  </Typography>
+                </Grid>
+                
+                {/* Perfusoren summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Perfusoren:</strong> {formData.perfusors || 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Laufende Medikation summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Laufende Medikation:</strong> {medicationText || 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Reanimation summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Reanimation:</strong> {formData.reanimation || 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Intubation summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Intubation:</strong> {formData.intubationSga ? 'SGA ' : ''}
+                    {formData.intubationTubus ? 'Endotr. Tubus ' : ''}
+                    {formData.intubationKoniotomie ? 'Koniotomie ' : ''}
+                    {!formData.intubationSga && !formData.intubationTubus && !formData.intubationKoniotomie && 
+                      'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Beatmung summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Beatmung:</strong> {formData.ventilationManual ? 'Manuell ' : ''}
+                    {formData.ventilationMechanical ? 'Maschinell ' : ''}
+                    {!formData.ventilationManual && !formData.ventilationMechanical && 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Thorax Drainage summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Thorax Drainage:</strong> {formData.thoraxDrainageRight ? 'Rechts ' : ''}
+                    {formData.thoraxDrainageLeft ? 'Links ' : ''}
+                    {!formData.thoraxDrainageRight && !formData.thoraxDrainageLeft && 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Dekompression summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Dekompression:</strong> {formData.decompressionRight ? 'Rechts ' : ''}
+                    {formData.decompressionLeft ? 'Links ' : ''}
+                    {!formData.decompressionRight && !formData.decompressionLeft && 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Erweiterte Maßnahmen summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Erweiterte Maßnahmen:</strong> {formData.extendedNarcosis ? 'Narkose ' : ''}
+                    {formData.extendedStiffneck ? 'Stiffneck ' : ''}
+                    {formData.extendedVacuumMattress ? 'Vakuum-Matratze ' : ''}
+                    {formData.extendedGastricTube ? 'Magensonde ' : ''}
+                    {formData.extendedUrinaryCatheter ? 'Urinkatheter ' : ''}
+                    {!formData.extendedNarcosis && !formData.extendedStiffneck && 
+                     !formData.extendedVacuumMattress && !formData.extendedGastricTube && 
+                     !formData.extendedUrinaryCatheter && 'Keine'}
+                  </Typography>
+                </Grid>
+                
+                {/* Blutstillung summary */}
+                <Grid item xs={12}>
+                  <Typography variant="body2">
+                    <strong>Blutstillung:</strong> {formData.hemostasisTq ? 'TQ ' : ''}
+                    {formData.hemostasisDv ? 'Israeli ' : ''}
+                    {formData.hemostasisWp ? 'WP ' : ''}
+                    {!formData.hemostasisTq && !formData.hemostasisDv && !formData.hemostasisWp && 'Keine'}
+                  </Typography>
+                </Grid>
+              </Grid>
+              
+              {/* Free text treatment info */}
               {formData.treatmentSoFar && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {formData.treatmentSoFar}
-                </Typography>
-              )}
-              {!formData.treatmentSoFar && (
-                <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
-                  Keine Behandlung dokumentiert
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  <strong>Weitere Behandlungsmaßnahmen:</strong> {formData.treatmentSoFar}
                 </Typography>
               )}
             </Paper>
