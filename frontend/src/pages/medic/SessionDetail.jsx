@@ -14,8 +14,10 @@ import SessionHeader from '../../components/medic/SessionHeader';
 import PatientInfo from '../../components/medic/PatientInfo';
 import InjuryInfo from '../../components/medic/InjuryInfo';
 import PreviousTreatment from '../../components/medic/PreviousTreatment';
-import TreatmentPlan from '../../components/medic/TreatmentPlan';
 import VitalSigns from '../../components/medic/VitalSigns';
+import TreatmentTemplatePlayer from '../../components/medic/TreatmentTemplatePlayer';
+import TreatmentEvaluation from '../../components/medic/TreatmentEvaluation';
+import { sessionsAPI } from '../../services/api';
 
 const SessionDetail = () => {
   const { id } = useParams();
@@ -23,7 +25,10 @@ const SessionDetail = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sessionTreatmentTemplate, setSessionTreatmentTemplate] = useState(null);
+  const [treatmentTemplateLoading, setTreatmentTemplateLoading] = useState(true);
   
+  // Fetch session details
   useEffect(() => {
     const fetchSessionDetails = async () => {
       try {
@@ -62,6 +67,30 @@ const SessionDetail = () => {
     fetchSessionDetails();
   }, [id]);
 
+  // Fetch session treatment template
+  useEffect(() => {
+    const fetchSessionTreatmentTemplate = async () => {
+      if (!id) return;
+      
+      try {
+        setTreatmentTemplateLoading(true);
+        
+        const response = await sessionsAPI.getSessionTreatmentTemplate(id);
+        
+        if (response && response.data && response.data.sessionTreatmentTemplate) {
+          setSessionTreatmentTemplate(response.data.sessionTreatmentTemplate);
+        }
+      } catch (err) {
+        console.error('Error fetching session treatment template:', err);
+        // Kein Error-State hier, da kein Template OK ist
+      } finally {
+        setTreatmentTemplateLoading(false);
+      }
+    };
+    
+    fetchSessionTreatmentTemplate();
+  }, [id]);
+
   const handleBack = () => {
     navigate('/medic/sessions');
   };
@@ -89,6 +118,32 @@ const SessionDetail = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Callback für Änderungen am Behandlungsplan-Status
+  const handleTreatmentStatusChange = async (status, step) => {
+    console.log('Treatment status changed:', status, 'Current step:', step);
+    
+    // Aktualisieren der Daten, wenn der Status geändert wurde
+    try {
+      setTreatmentTemplateLoading(true);
+      
+      const response = await sessionsAPI.getSessionTreatmentTemplate(id);
+      
+      if (response && response.data && response.data.sessionTreatmentTemplate) {
+        setSessionTreatmentTemplate(response.data.sessionTreatmentTemplate);
+      }
+    } catch (err) {
+      console.error('Error refreshing session treatment template:', err);
+    } finally {
+      setTreatmentTemplateLoading(false);
+    }
+  };
+
+  // Callback nach Bewertung
+  const handleEvaluationSubmitted = () => {
+    console.log('Evaluation submitted');
+    // Optional: Session-Daten neu laden
   };
 
   if (loading) {
@@ -163,8 +218,20 @@ const SessionDetail = () => {
         onVitalSignsUpdated={handleVitalSignsUpdated} 
       />
       
-      {/* Treatment Plan */}
-      <TreatmentPlan treatmentPlan={session.treatmentPlan} />
+      {/* Treatment Template Player - ersetzt den alten statischen TreatmentPlan */}
+      <TreatmentTemplatePlayer 
+        sessionId={id}
+        onTreatmentStatusChange={handleTreatmentStatusChange}
+      />
+      
+      {/* Treatment Evaluation - nur anzeigen, wenn Behandlung abgeschlossen */}
+      {!treatmentTemplateLoading && sessionTreatmentTemplate && (
+        <TreatmentEvaluation 
+          sessionId={id}
+          treatmentTemplate={sessionTreatmentTemplate}
+          onEvaluationSubmitted={handleEvaluationSubmitted}
+        />
+      )}
     </Box>
   );
 };

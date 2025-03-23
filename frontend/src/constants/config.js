@@ -2,8 +2,8 @@
  * Configuration constants for the application
  */
 
-// API base URL
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// API base URL - für Docker-Umgebung angepasst
+export const API_BASE_URL = '/api';
 
 // Default pagination settings
 export const DEFAULT_PAGE_SIZE = 10;

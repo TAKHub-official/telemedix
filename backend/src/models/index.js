@@ -5,6 +5,7 @@ const TreatmentPlanModel = require('./treatmentPlan');
 const SystemSettingModel = require('./systemSetting');
 const AuditLogModel = require('./auditLog');
 const NotificationModel = require('./notification');
+const SessionTreatmentTemplateModel = require('./sessionTreatmentTemplate');
 
 module.exports = {
   UserModel,
@@ -12,5 +13,6 @@ module.exports = {
   TreatmentPlanModel,
   SystemSettingModel,
   AuditLogModel,
-  NotificationModel
+  NotificationModel,
+  SessionTreatmentTemplateModel
 }; 

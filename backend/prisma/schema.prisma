@@ -13,22 +13,26 @@ datasource db {
 
 // User model - represents all users in the system
 model User {
-  id              String      @id @default(uuid())
-  email           String      @unique
-  password        String
-  firstName       String
-  lastName        String
-  role            String      @default("MEDIC") // ADMIN, DOCTOR, MEDIC
-  status          String      @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  lastLoginAt     DateTime?
-  auditLogs       AuditLog[]
-  createdSessions Session[]   @relation("CreatedBy")
-  assignedSessions Session[]  @relation("AssignedTo")
-  notifications   Notification[]
+  id                 String      @id @default(uuid())
+  email              String      @unique
+  password           String
+  firstName          String
+  lastName           String
+  role               String      @default("MEDIC") // ADMIN, DOCTOR, MEDIC
+  status             String      @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  specialization     String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  lastLoginAt        DateTime?
+  
+  // Relations
+  createdSessions    Session[]   @relation("CreatedBy")
+  assignedSessions   Session[]   @relation("AssignedTo")
+  auditLogs          AuditLog[]
+  notifications      Notification[]
   treatmentTemplates TreatmentTemplate[]
-  favorites       UserFavorite[] // Relation to favorited templates
+  userFavorites      UserFavorite[]
+  evaluations        TreatmentEvaluation[] @relation("evaluatedBy")
 }
 
 // Session model - represents a medical consultation session
@@ -43,6 +47,8 @@ model Session {
   completedAt     DateTime?
   completionReason String?     // Reason for completing the session
   completionNote  String?     // Additional notes on completion reason
+  
+  // Relations
   createdById     String
   createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
   assignedToId    String?
@@ -52,6 +58,8 @@ model Session {
   vitalSigns      VitalSign[]
   notes           Note[]
   attachments     Attachment[]
+  sessionTreatmentTemplate SessionTreatmentTemplate?
+  treatmentEvaluations TreatmentEvaluation[]
 }
 
 // Medical Record model - represents a patient's medical record
@@ -166,6 +174,8 @@ model TreatmentTemplate {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   userFavorites   UserFavorite[] // Users who have favorited this template
+  sessionTreatmentTemplates SessionTreatmentTemplate[]
+  evaluations     TreatmentEvaluation[]
 }
 
 // User Favorite model - represents a favorited treatment template by a user
@@ -178,4 +188,37 @@ model UserFavorite {
   createdAt           DateTime  @default(now())
 
   @@unique([userId, treatmentTemplateId]) // A user can favorite a template only once
+}
+
+// Session Treatment Template model - represents a treatment template assigned to a session
+model SessionTreatmentTemplate {
+  id                  String    @id @default(uuid())
+  sessionId           String    @unique
+  session             Session   @relation(fields: [sessionId], references: [id])
+  treatmentTemplateId String
+  treatmentTemplate   TreatmentTemplate @relation(fields: [treatmentTemplateId], references: [id])
+  currentStep         Int       @default(0) // Current step index (0-based)
+  status              String    @default("NEW") // NEW, IN_PROGRESS, COMPLETED
+  assignedById        String
+  assignedAt          DateTime  @default(now())
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// Modell für Behandlungsbewertungen
+model TreatmentEvaluation {
+  id                 String   @id @default(uuid())
+  sessionId          String
+  session            Session  @relation(fields: [sessionId], references: [id])
+  treatmentTemplateId String
+  treatmentTemplate  TreatmentTemplate @relation(fields: [treatmentTemplateId], references: [id])
+  effectiveness      Int
+  patientCompliance  String
+  comments           String?
+  evaluatedById      String
+  evaluatedBy        User     @relation("evaluatedBy", fields: [evaluatedById], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 } 

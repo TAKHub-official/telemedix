@@ -1,39 +1,124 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, authorize } = require('../middleware/auth');
 const {
-  getSessions,
+  getAllSessions,
   getSessionById,
   createSession,
   updateSession,
-  assignSession,
+  deleteSession,
+  completeSession,
   addVitalSign,
-  addNote
+  addNote,
+  assignSession
 } = require('../controllers/session');
-const { authenticate, authorize } = require('../middleware/auth');
+const {
+  assignTreatmentTemplate,
+  getSessionTreatmentTemplate,
+  updateSessionTreatmentTemplate,
+  removeSessionTreatmentTemplate,
+  evaluateTreatment
+} = require('../controllers/sessionTreatmentTemplate');
 
 // All routes require authentication
 router.use(authenticate);
 
-// Get all sessions - accessible to all authenticated users
-// but filtered based on role in the controller
-router.get('/', getSessions);
+/**
+ * @route GET /api/sessions
+ * @desc Get all sessions (filtered by role)
+ * @access Private
+ */
+router.get('/', getAllSessions);
 
-// Get single session by ID - accessible to admins, creator, and assigned doctor
+/**
+ * @route GET /api/sessions/:id
+ * @desc Get a session by ID
+ * @access Private
+ */
 router.get('/:id', getSessionById);
 
-// Create session - medics and admins only
+/**
+ * @route POST /api/sessions
+ * @desc Create a new session
+ * @access Private (Medic or Admin)
+ */
 router.post('/', authorize(['MEDIC', 'ADMIN']), createSession);
 
-// Update session - accessible to creator, assigned doctor, and admins
+/**
+ * @route PUT /api/sessions/:id
+ * @desc Update a session
+ * @access Private
+ */
 router.put('/:id', updateSession);
 
-// Assign session to doctor - admins and doctors can do this
-router.put('/:id/assign', authorize(['ADMIN', 'DOCTOR']), assignSession);
+/**
+ * @route DELETE /api/sessions/:id
+ * @desc Delete a session
+ * @access Private (Admin only)
+ */
+router.delete('/:id', authorize(['ADMIN']), deleteSession);
 
-// Add vital sign - accessible to creator, assigned doctor, and admins
+/**
+ * @route PUT /api/sessions/:id/complete
+ * @desc Mark a session as completed
+ * @access Private
+ */
+router.put('/:id/complete', completeSession);
+
+/**
+ * @route PUT /api/sessions/:id/assign
+ * @desc Assign a session to a doctor
+ * @access Private (Doctor or Admin)
+ */
+router.put('/:id/assign', authorize(['DOCTOR', 'ADMIN']), assignSession);
+
+/**
+ * @route POST /api/sessions/:id/vitals
+ * @desc Add vital signs to a session
+ * @access Private
+ */
 router.post('/:id/vitals', addVitalSign);
 
-// Add note - accessible to creator, assigned doctor, and admins
+/**
+ * @route POST /api/sessions/:id/notes
+ * @desc Add notes to a session
+ * @access Private
+ */
 router.post('/:id/notes', addNote);
+
+/**
+ * @route POST /api/sessions/:sessionId/treatment-template
+ * @desc Assign a treatment template to a session
+ * @access Private (Doctor or Admin)
+ */
+router.post('/:sessionId/treatment-template', authorize(['DOCTOR', 'ADMIN']), assignTreatmentTemplate);
+
+/**
+ * @route GET /api/sessions/:sessionId/treatment-template
+ * @desc Get the treatment template assigned to a session
+ * @access Private
+ */
+router.get('/:sessionId/treatment-template', getSessionTreatmentTemplate);
+
+/**
+ * @route PUT /api/sessions/:sessionId/treatment-template
+ * @desc Update the status or current step of a session's treatment template
+ * @access Private
+ */
+router.put('/:sessionId/treatment-template', updateSessionTreatmentTemplate);
+
+/**
+ * @route DELETE /api/sessions/:sessionId/treatment-template
+ * @desc Remove a treatment template from a session
+ * @access Private (Doctor or Admin)
+ */
+router.delete('/:sessionId/treatment-template', authorize(['DOCTOR', 'ADMIN']), removeSessionTreatmentTemplate);
+
+/**
+ * @route POST /api/sessions/:sessionId/treatment-evaluation
+ * @desc Submit an evaluation for a completed treatment
+ * @access Private (Medic)
+ */
+router.post('/:sessionId/treatment-evaluation', authorize(['MEDIC']), evaluateTreatment);
 
 module.exports = router; 

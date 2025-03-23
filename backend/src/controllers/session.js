@@ -7,7 +7,7 @@ const { emitSessionUpdate, emitNotification } = require('../index');
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getSessions = async (req, res) => {
+const getAllSessions = async (req, res) => {
   try {
     const { status, priority, page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -72,7 +72,7 @@ const getSessions = async (req, res) => {
 };
 
 /**
- * Get a single session by ID
+ * Get a session by ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -80,47 +80,41 @@ const getSessionById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Find session by ID
+    // Check if the session exists
     const session = await SessionModel.findById(id);
-    
     if (!session) {
-      return res.status(404).json({ 
-        message: 'Session nicht gefunden'
-      });
+      return res.status(404).json({ message: 'Session not found' });
     }
     
-    // Check if user has access to this session
-    if (req.user.role === 'DOCTOR') {
-      // Doctors can view sessions assigned to them OR sessions with status='OPEN' OR archived sessions
-      if (session.assignedToId !== req.user.id && session.status !== 'OPEN' && 
-          session.status !== 'COMPLETED' && session.status !== 'CANCELLED') {
-        // Special case: If the session is IN_PROGRESS and assigned to this doctor, allow access
-        if (session.status === 'IN_PROGRESS' && req.user.id === session.assignedToId) {
-          // Allow access - this doctor is handling the session
-        } else if (session.status === 'ASSIGNED' && req.user.id === session.assignedToId) {
-          // Allow access - this session is assigned to this doctor
-        } else {
-          // If the session is assigned to a different doctor, deny access
-          return res.status(403).json({ 
-            message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
-          });
-        }
-      }
-    } else if (req.user.role === 'MEDIC' && session.createdById !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'Zugriff verweigert. Sie haben diese Session nicht erstellt.'
-      });
+    // Check if user has permission to access this session
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    // Admin can access any session
+    if (userRole === 'ADMIN') {
+      return res.status(200).json({ session });
     }
     
-    // User has access, return the session data
-    res.status(200).json({
-      session
-    });
+    // Medic can access sessions they created
+    if (userRole === 'MEDIC' && session.createdById === userId) {
+      return res.status(200).json({ session });
+    }
+    
+    // Doctor can access sessions assigned to them or with status OPEN
+    if (userRole === 'DOCTOR' && (session.assignedToId === userId || session.status === 'OPEN')) {
+      return res.status(200).json({ session });
+    }
+    
+    // Patient can access sessions they are the patient for
+    if (userRole === 'PATIENT' && session.patientId === userId) {
+      return res.status(200).json({ session });
+    }
+    
+    // If none of the above conditions are met, deny access
+    return res.status(403).json({ message: 'You do not have permission to access this session' });
   } catch (error) {
-    console.error('Get session by ID error:', error);
-    res.status(500).json({ 
-      message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
-    });
+    console.error('Error in getSessionById:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -588,12 +582,137 @@ const addNote = async (req, res) => {
   }
 };
 
+/**
+ * Delete a session
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const deleteSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if session exists
+    const session = await SessionModel.findById(id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    // Delete the session
+    await SessionModel.delete(id);
+    
+    // Create audit log
+    await AuditLogModel.create({
+      action: 'DELETE_SESSION',
+      entity: 'SESSION',
+      entityId: id,
+      userId: req.user.id,
+      metadata: {
+        sessionId: id
+      }
+    });
+    
+    // Emit event for real-time updates
+    emitSessionUpdate({
+      action: 'DELETE',
+      session: { id }
+    });
+    
+    return res.status(200).json({ message: 'Session deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteSession:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * Mark a session as completed
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const completeSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { summary } = req.body;
+    
+    // Check if session exists
+    const session = await SessionModel.findById(id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    // Check if user is authorized to complete this session
+    const userId = req.user.id;
+    if (session.assignedToId !== userId && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'You are not authorized to complete this session' });
+    }
+    
+    // Update session status and add completion details
+    const updatedSession = await SessionModel.update(id, {
+      status: 'COMPLETED',
+      completedAt: new Date(),
+      completedById: userId,
+      summary: summary || ''
+    });
+    
+    // Create audit log
+    await AuditLogModel.create({
+      action: 'COMPLETE_SESSION',
+      entity: 'SESSION',
+      entityId: id,
+      userId: req.user.id,
+      metadata: {
+        sessionId: id,
+        summary: summary || ''
+      }
+    });
+    
+    // Create notification for patient
+    if (session.patientId) {
+      await NotificationModel.create({
+        type: 'SESSION_COMPLETED',
+        userId: session.patientId,
+        title: 'Session Completed',
+        message: 'Your session has been marked as completed',
+        metadata: {
+          sessionId: id
+        }
+      });
+      
+      // Emit notification in real-time
+      emitNotification(session.patientId, {
+        type: 'SESSION_COMPLETED',
+        title: 'Session Completed',
+        message: 'Your session has been marked as completed',
+        metadata: {
+          sessionId: id
+        }
+      });
+    }
+    
+    // Emit event for real-time updates
+    emitSessionUpdate({
+      action: 'UPDATE',
+      session: updatedSession
+    });
+    
+    return res.status(200).json({
+      message: 'Session marked as completed',
+      session: updatedSession
+    });
+  } catch (error) {
+    console.error('Error in completeSession:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
-  getSessions,
+  getAllSessions,
   getSessionById,
   createSession,
   updateSession,
   assignSession,
   addVitalSign,
-  addNote
+  addNote,
+  deleteSession,
+  completeSession
 }; 

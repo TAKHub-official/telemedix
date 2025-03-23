@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../constants/config';
 
 // Log configuration for debugging
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -6,7 +7,7 @@ console.log('API URL:', apiUrl);
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: apiUrl,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -133,6 +134,9 @@ const sessionsAPI = {
   },
   addVitalSign: (id, data) => api.post(`/sessions/${id}/vitals`, data),
   addNote: (id, content) => api.post(`/sessions/${id}/notes`, { content }),
+  evaluateTreatment: async (sessionId, evaluationData) => {
+    return api.post(`/api/sessions/${sessionId}/treatment-evaluation`, evaluationData);
+  },
 };
 
 // Treatment Plans API
@@ -148,11 +152,25 @@ const treatmentPlansAPI = {
   deleteStep: (stepId) => api.delete(`/treatment-plans/steps/${stepId}`),
 };
 
+// Treatment Templates API
+const treatmentTemplatesAPI = {
+  getAll: () => api.get('/treatment-templates'),
+  getById: (id) => api.get(`/treatment-templates/${id}`),
+  create: (data) => api.post('/treatment-templates', data),
+  update: (id, data) => api.put(`/treatment-templates/${id}`, data),
+  delete: (id) => api.delete(`/treatment-templates/${id}`),
+  
+  // Favorite functionality
+  favorite: (id) => api.post(`/treatment-templates/${id}/favorite`),
+  unfavorite: (id) => api.delete(`/treatment-templates/${id}/favorite`)
+};
+
 export {
   api,
   authAPI,
   usersAPI,
   sessionsAPI,
   treatmentPlansAPI,
+  treatmentTemplatesAPI,
   adminAPI,
 }; 

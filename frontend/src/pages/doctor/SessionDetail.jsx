@@ -56,8 +56,8 @@ import SessionHeader from '../../components/medic/SessionHeader';
 import PatientInfo from '../../components/medic/PatientInfo';
 import InjuryInfo from '../../components/medic/InjuryInfo';
 import PreviousTreatment from '../../components/medic/PreviousTreatment';
-import TreatmentPlan from '../../components/medic/TreatmentPlan';
 import VitalSigns from '../../components/medic/VitalSigns';
+import SessionTreatmentTemplateSelector from '../../components/doctor/SessionTreatmentTemplateSelector';
 
 // Safe parsing of JSON data
 const safelyParseJSON = (jsonString, defaultValue = {}) => {
@@ -1128,7 +1128,7 @@ const DoctorSessionDetail = () => {
         {tabValue === 2 && (
           <>
             {/* Treatment Plan */}
-            <TreatmentPlan treatmentPlan={session.treatmentPlan} />
+            <SessionTreatmentTemplateSelector treatmentPlan={session.treatmentPlan} />
           </>
         )}
       </div>
