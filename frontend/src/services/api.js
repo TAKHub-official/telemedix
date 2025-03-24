@@ -137,6 +137,11 @@ const sessionsAPI = {
   evaluateTreatment: async (sessionId, evaluationData) => {
     return api.post(`/api/sessions/${sessionId}/treatment-evaluation`, evaluationData);
   },
+  // Add treatment template methods
+  getSessionTreatmentTemplate: (sessionId) => api.get(`/sessions/${sessionId}/treatment-template`),
+  assignTreatmentTemplate: (sessionId, templateId) => api.post(`/sessions/${sessionId}/treatment-template`, { treatmentTemplateId: templateId }),
+  updateTreatmentTemplate: (sessionId, data) => api.put(`/sessions/${sessionId}/treatment-template`, data),
+  removeTreatmentTemplate: (sessionId) => api.delete(`/sessions/${sessionId}/treatment-template`),
 };
 
 // Treatment Plans API

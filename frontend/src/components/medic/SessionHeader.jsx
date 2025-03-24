@@ -13,15 +13,15 @@ const SessionHeader = ({ session }) => {
   const renderStatusChip = (status) => {
     switch (status) {
       case 'OPEN':
-        return <Chip label="Offen" color="warning" />;
+        return <Chip label="Offen" color="warning" size="small" />;
       case 'ASSIGNED':
-        return <Chip label="Zugewiesen" color="info" />;
+        return <Chip label="Zugewiesen" color="info" size="small" />;
       case 'IN_PROGRESS':
-        return <Chip label="In Bearbeitung" color="primary" />;
+        return <Chip label="In Bearbeitung" color="primary" size="small" />;
       case 'COMPLETED':
-        return <Chip label="Abgeschlossen" color="success" />;
+        return <Chip label="Abgeschlossen" color="success" size="small" />;
       default:
-        return <Chip label={status} />;
+        return <Chip label={status} size="small" />;
     }
   };
 

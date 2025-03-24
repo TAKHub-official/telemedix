@@ -68,11 +68,11 @@ const TreatmentTemplatePlayer = ({ sessionId, onTreatmentStatusChange }) => {
       
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        // No template assigned - this is fine
+        // No template assigned - this is expected for new sessions
         setSessionTreatmentTemplate(null);
       } else {
         console.error('Error fetching session treatment template:', err);
-        setError('Fehler beim Laden des Behandlungsplans.');
+        setError('Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.');
       }
     } finally {
       setLoading(false);
@@ -223,7 +223,7 @@ const TreatmentTemplatePlayer = ({ sessionId, onTreatmentStatusChange }) => {
               Behandlungsplan
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Kein Behandlungsplan für diese Session verfügbar.
+              Für diese Session wurde noch kein Behandlungsplan vom Arzt zugewiesen.
             </Typography>
           </CardContent>
         </Card>
