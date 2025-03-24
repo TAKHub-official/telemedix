@@ -67,7 +67,12 @@
 1. ✅ Authentifizierung vollständig implementieren (JWT)
 2. ✅ Benutzer-Management (CRUD-Operationen, Rollenverwaltung)
 3. ✅ Session-Management (Erstellen, Bearbeiten, Status ändern)
-4. Behandlungsplan-Management (Erstellen, Schritte definieren)
+4. ✅ Behandlungsplan-Management (Erstellen, Schritte definieren)
+   - ✅ TreatmentPlan und TreatmentStep Modelle implementiert
+   - ✅ Controller für TreatmentPlan und TreatmentStep erstellt
+   - ✅ API-Routen für TreatmentPlan und TreatmentStep eingerichtet
+   - ✅ Behandlungsplan-Erstellung und -Verwaltung implementiert
+   - ✅ Behandlungsschritte und deren Status-Tracking implementiert
 5. ✅ Echtzeit-Events mit Socket.io implementieren für Updates
 
 ### Phase 3: Frontend-Seiten implementieren
@@ -82,13 +87,16 @@
    - ✅ Sessions-Verwaltung (Liste, Suche, Filter)
    - ✅ Session-Detailansicht
    - ✅ Vitalwerte-Visualisierung
-   - ⏩ Behandlungsplan-Erstellung und -Bearbeitung
+   - ✅ Behandlungsplan-Erstellung und -Bearbeitung
+   - ✅ Behandlungsschritte und deren Status-Tracking
+   - ⚠️ Behandlungsplan-Vorlagen-Verwaltung (teilweise implementiert)
 3. Medic-Bereich (teilweise abgeschlossen)
    - ✅ Anamnesebogen-Erfassung
    - ✅ Session-Erstellung
    - ✅ Session-Übersicht und Filterung
    - ✅ Session-Anzeige mit Statusänderungen in Echtzeit
-   - ⏩ Behandlungsplan-Abarbeitung
+   - ✅ Behandlungsplan-Abarbeitung
+   - ✅ Behandlungsschritte und deren Status-Tracking
    - ⏩ Offline-Funktionalität
 
 ### Phase 4: Offline-Funktionalität und PWA-Features
@@ -152,6 +160,23 @@
 - Offline-Funktionalität und Synchronisierung 
 
 ## Letzte Änderungen
+
+### 2024-03-24: Implementierung der Behandlungsplan-Funktionalität
+- ✅ Backend-Implementierung:
+  - TreatmentPlan und TreatmentStep Modelle erstellt
+  - Controller für TreatmentPlan und TreatmentStep implementiert
+  - API-Routen für TreatmentPlan und TreatmentStep eingerichtet
+  - Behandlungsplan-Erstellung und -Verwaltung implementiert
+  - Behandlungsschritte und deren Status-Tracking implementiert
+- ✅ Frontend-Implementierung:
+  - Behandlungsplan-Komponenten erstellt
+  - Behandlungsschritte und deren Status-Tracking implementiert
+  - Behandlungsplan-Erstellung und -Bearbeitung implementiert
+  - ⚠️ Behandlungsplan-Vorlagen-Verwaltung (teilweise implementiert)
+- ✅ Fehlerbehebungen:
+  - 404-Fehler bei der Session-Erstellung behoben
+  - Fehlende API-Routen für Vitalwerte und Notizen hinzugefügt
+  - Fehlende API-Route für Session-Zuweisung hinzugefügt
 
 ### 2023-08-XX: Verbesserungen für das Arzt-Dashboard
 - ✅ Anpassungen im Arzt-Interface:
