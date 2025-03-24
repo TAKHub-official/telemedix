@@ -14,7 +14,9 @@ import {
   Divider,
   Paper,
   IconButton,
-  Tooltip
+  Tooltip,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,21 +24,42 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Star as StarIcon,
-  StarBorder as StarBorderIcon
+  StarBorder as StarBorderIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_BASE_URL } from '../../constants/config';
 
 const TreatmentTemplates = () => {
   const [templates, setTemplates] = useState([]);
+  const [filteredTemplates, setFilteredTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { user } = useSelector(state => state.auth);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchTemplates();
   }, []);
+
+  // Filter templates when searchTerm or templates change
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredTemplates(templates);
+      return;
+    }
+
+    const lowerCaseSearch = searchTerm.toLowerCase().trim();
+    const filtered = templates.filter(template => 
+      template.title.toLowerCase().includes(lowerCaseSearch) ||
+      template.description?.toLowerCase().includes(lowerCaseSearch) ||
+      `${template.createdBy.firstName} ${template.createdBy.lastName}`.toLowerCase().includes(lowerCaseSearch)
+    );
+    
+    setFilteredTemplates(filtered);
+  }, [searchTerm, templates]);
 
   const fetchTemplates = async () => {
     try {
@@ -47,6 +70,7 @@ const TreatmentTemplates = () => {
         }
       });
       setTemplates(response.data);
+      setFilteredTemplates(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching treatment templates:", err);
@@ -54,6 +78,14 @@ const TreatmentTemplates = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
   };
 
   const handleDelete = async (id) => {
@@ -67,7 +99,16 @@ const TreatmentTemplates = () => {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
-      setTemplates(templates.filter(template => template.id !== id));
+      const updatedTemplates = templates.filter(template => template.id !== id);
+      setTemplates(updatedTemplates);
+      setFilteredTemplates(
+        searchTerm ? 
+        updatedTemplates.filter(template => 
+          template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          template.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        ) : 
+        updatedTemplates
+      );
     } catch (err) {
       console.error("Error deleting treatment template:", err);
       setError("Fehler beim Löschen des Behandlungsplans.");
@@ -93,11 +134,26 @@ const TreatmentTemplates = () => {
       }
       
       // Update the local state to reflect the change
-      setTemplates(templates.map(template => 
+      const updatedTemplates = templates.map(template => 
         template.id === id 
           ? { ...template, isFavorite: !isFavorite } 
           : template
-      ));
+      );
+      
+      setTemplates(updatedTemplates);
+      
+      // Apply current search filter to updated templates
+      if (searchTerm.trim()) {
+        const lowerCaseSearch = searchTerm.toLowerCase().trim();
+        const filtered = updatedTemplates.filter(template => 
+          template.title.toLowerCase().includes(lowerCaseSearch) ||
+          template.description?.toLowerCase().includes(lowerCaseSearch) ||
+          `${template.createdBy.firstName} ${template.createdBy.lastName}`.toLowerCase().includes(lowerCaseSearch)
+        );
+        setFilteredTemplates(filtered);
+      } else {
+        setFilteredTemplates(updatedTemplates);
+      }
     } catch (err) {
       console.error("Error toggling favorite status:", err);
       setError("Fehler beim Ändern des Favoriten-Status.");
@@ -105,7 +161,7 @@ const TreatmentTemplates = () => {
   };
 
   // Sort templates - favorited ones first, then by update date
-  const sortedTemplates = [...templates].sort((a, b) => {
+  const sortedTemplates = [...filteredTemplates].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
     
@@ -136,6 +192,30 @@ const TreatmentTemplates = () => {
           Neuer Behandlungsplan
         </Button>
       </Box>
+
+      {/* Search Bar */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="Suche nach Behandlungsplänen..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+            endAdornment: searchTerm && (
+              <InputAdornment position="end">
+                <IconButton onClick={handleClearSearch} edge="end" size="small">
+                  <ClearIcon />
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
+        />
+      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -211,11 +291,14 @@ const TreatmentTemplates = () => {
           </Grid>
         ))}
         
-        {templates.length === 0 && !loading && (
+        {sortedTemplates.length === 0 && !loading && (
           <Grid item xs={12}>
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="body1">
-                Keine Behandlungspläne vorhanden. Erstellen Sie Ihren ersten Plan!
+                {searchTerm 
+                  ? "Keine Behandlungspläne gefunden, die Ihrem Suchbegriff entsprechen."
+                  : "Keine Behandlungspläne vorhanden. Erstellen Sie Ihren ersten Plan!"
+                }
               </Typography>
             </Paper>
           </Grid>

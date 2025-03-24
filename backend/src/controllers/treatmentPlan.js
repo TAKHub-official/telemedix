@@ -535,6 +535,78 @@ const deleteStep = async (req, res) => {
   }
 };
 
+/**
+ * Search treatment plans
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const searchTreatmentPlans = async (req, res) => {
+  try {
+    const { query, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user.id;
+    
+    // Perform the search
+    const treatmentPlans = await TreatmentPlanModel.searchTreatmentPlans(
+      query || '', 
+      userId, 
+      { 
+        skip, 
+        take: parseInt(limit) 
+      }
+    );
+    
+    // Count total results for pagination
+    const totalMatches = treatmentPlans.length;
+    
+    res.status(200).json({
+      treatmentPlans,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total: totalMatches,
+      totalPages: Math.ceil(totalMatches / parseInt(limit))
+    });
+  } catch (error) {
+    console.error('Search treatment plans error:', error);
+    res.status(500).json({ 
+      message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
+    });
+  }
+};
+
+/**
+ * Get treatment plans by doctor ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getTreatmentPlansByDoctor = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user.id;
+    
+    // Get all treatment plans for the doctor
+    const treatmentPlans = await TreatmentPlanModel.findByDoctorId(
+      userId, 
+      { 
+        skip, 
+        take: parseInt(limit) 
+      }
+    );
+    
+    res.status(200).json({
+      treatmentPlans,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Get treatment plans by doctor error:', error);
+    res.status(500).json({ 
+      message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.'
+    });
+  }
+};
+
 module.exports = {
   createTreatmentPlan,
   getTreatmentPlanBySessionId,
@@ -542,5 +614,7 @@ module.exports = {
   deleteTreatmentPlan,
   addStep,
   updateStep,
-  deleteStep
+  deleteStep,
+  searchTreatmentPlans,
+  getTreatmentPlansByDoctor
 }; 

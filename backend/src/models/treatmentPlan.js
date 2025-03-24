@@ -222,6 +222,110 @@ class TreatmentPlanModel {
       data
     });
   }
+
+  /**
+   * Search treatment plans by query
+   * @param {string} query - The search query
+   * @param {string} doctorId - The ID of the doctor performing the search
+   * @param {Object} options - Pagination options
+   * @returns {Promise<Array>} List of matching treatment plans
+   */
+  static async searchTreatmentPlans(query, doctorId, { skip = 0, take = 20 } = {}) {
+    const searchTerm = query.trim();
+    
+    // If no search term is provided, return recent treatment plans
+    if (!searchTerm) {
+      return prisma.treatmentPlan.findMany({
+        where: {
+          doctorId
+        },
+        orderBy: {
+          updatedAt: 'desc'
+        },
+        skip,
+        take,
+        include: {
+          session: true,
+          steps: {
+            orderBy: {
+              createdAt: 'asc'
+            }
+          }
+        }
+      });
+    }
+    
+    // Search in treatment plan fields and related session fields
+    return prisma.treatmentPlan.findMany({
+      where: {
+        OR: [
+          { diagnosis: { contains: searchTerm, mode: 'insensitive' } },
+          { treatment: { contains: searchTerm, mode: 'insensitive' } },
+          { notes: { contains: searchTerm, mode: 'insensitive' } },
+          {
+            steps: {
+              some: {
+                OR: [
+                  { title: { contains: searchTerm, mode: 'insensitive' } },
+                  { description: { contains: searchTerm, mode: 'insensitive' } }
+                ]
+              }
+            }
+          },
+          {
+            session: {
+              OR: [
+                { title: { contains: searchTerm, mode: 'insensitive' } },
+                { patientCode: { contains: searchTerm, mode: 'insensitive' } }
+              ]
+            }
+          }
+        ],
+        // If the user is a doctor, show only plans they created or plans for archived sessions
+        doctorId: doctorId
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      },
+      skip,
+      take,
+      include: {
+        session: true,
+        steps: {
+          orderBy: {
+            createdAt: 'asc'
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Find treatment plans by doctor ID
+   * @param {string} doctorId - The doctor's ID
+   * @param {Object} options - Pagination options
+   * @returns {Promise<Array>} List of treatment plans
+   */
+  static async findByDoctorId(doctorId, { skip = 0, take = 20 } = {}) {
+    return prisma.treatmentPlan.findMany({
+      where: {
+        doctorId
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      },
+      skip,
+      take,
+      include: {
+        session: true,
+        steps: {
+          orderBy: {
+            createdAt: 'asc'
+          }
+        }
+      }
+    });
+  }
 }
 
 module.exports = TreatmentPlanModel; 

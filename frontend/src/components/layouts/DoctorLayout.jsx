@@ -87,7 +87,7 @@ function DoctorLayout() {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/doctor/dashboard' },
     { text: 'Meine Sessions', icon: <ListAltIcon />, path: '/doctor/sessions' },
     { text: 'Archivierte Sessions', icon: <HistoryIcon />, path: '/doctor/archives' },
-    { text: 'Behandlungspläne', icon: <MedicalServicesIcon />, path: '/doctor/treatment-templates' },
+    { text: 'Behandlungsvorlagen', icon: <MedicalServicesIcon />, path: '/doctor/treatment-templates' },
   ];
 
   const drawer = (

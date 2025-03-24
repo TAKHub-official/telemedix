@@ -7,12 +7,20 @@ const {
   deleteTreatmentPlan,
   addStep,
   updateStep,
-  deleteStep
+  deleteStep,
+  searchTreatmentPlans,
+  getTreatmentPlansByDoctor
 } = require('../controllers/treatmentPlan');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All routes require authentication
 router.use(authenticate);
+
+// Search treatment plans (doctors only)
+router.get('/search', authorize(['DOCTOR', 'ADMIN']), searchTreatmentPlans);
+
+// Get all treatment plans for a doctor
+router.get('/doctor', authorize(['DOCTOR', 'ADMIN']), getTreatmentPlansByDoctor);
 
 // Create a treatment plan for a session (doctors only)
 router.post('/sessions/:sessionId', authorize(['DOCTOR', 'ADMIN']), createTreatmentPlan);
