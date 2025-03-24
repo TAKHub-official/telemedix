@@ -100,8 +100,16 @@ const getSessionById = async (req, res) => {
       return res.status(200).json({ session });
     }
     
-    // Doctor can access sessions assigned to them or with status OPEN
-    if (userRole === 'DOCTOR' && (session.assignedToId === userId || session.status === 'OPEN')) {
+    // Doctor can access:
+    // 1. Sessions assigned to them
+    // 2. Sessions with status OPEN
+    // 3. ANY session with status COMPLETED or CANCELLED (archived sessions)
+    if (userRole === 'DOCTOR' && (
+      session.assignedToId === userId || 
+      session.status === 'OPEN' || 
+      session.status === 'COMPLETED' || 
+      session.status === 'CANCELLED'
+    )) {
       return res.status(200).json({ session });
     }
     
@@ -475,7 +483,10 @@ const addVitalSign = async (req, res) => {
     }
     
     // Check if user has access to this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    if (req.user.role === 'DOCTOR' && 
+        session.assignedToId !== req.user.id && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
         message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
       });
@@ -544,7 +555,10 @@ const addNote = async (req, res) => {
     }
     
     // Check if user has access to this session
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    if (req.user.role === 'DOCTOR' && 
+        session.assignedToId !== req.user.id && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
         message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
       });

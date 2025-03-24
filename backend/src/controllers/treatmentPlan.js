@@ -30,7 +30,9 @@ const createTreatmentPlan = async (req, res) => {
     
     // Check if user has permission to create treatment plan
     if (req.user.role === 'DOCTOR') {
-      if (session.assignedToId !== req.user.id) {
+      if (session.assignedToId !== req.user.id && 
+          session.status !== 'COMPLETED' && 
+          session.status !== 'CANCELLED') {
         return res.status(403).json({ 
           message: 'Zugriff verweigert. Sie können keinen Behandlungsplan für eine Session erstellen, die nicht Ihnen zugewiesen ist.'
         });
@@ -139,7 +141,12 @@ const getTreatmentPlanBySessionId = async (req, res) => {
     
     // Check if user has permission to view treatment plan
     if (req.user.role === 'DOCTOR') {
-      if (session.assignedToId !== req.user.id) {
+      // Allow doctors to access treatment plans for:
+      // 1. Their assigned sessions
+      // 2. Any archived session (COMPLETED or CANCELLED)
+      if (session.assignedToId !== req.user.id && 
+          session.status !== 'COMPLETED' && 
+          session.status !== 'CANCELLED') {
         return res.status(403).json({ 
           message: 'Zugriff verweigert. Sie können keinen Behandlungsplan für eine Session einsehen, die nicht Ihnen zugewiesen ist.'
         });
@@ -220,7 +227,10 @@ const updateTreatmentPlan = async (req, res) => {
     const session = await SessionModel.findById(treatmentPlan.sessionId);
     
     // Check if user has access to update this treatment plan
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    if (req.user.role === 'DOCTOR' && 
+        session.assignedToId !== req.user.id && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
         message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
       });
@@ -277,11 +287,12 @@ const deleteTreatmentPlan = async (req, res) => {
     // Find the associated session
     const session = await SessionModel.findById(treatmentPlan.sessionId);
     
-    // Check if user has access to delete this treatment plan
-    if (req.user.role !== 'ADMIN' && 
-       (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id)) {
+    // Check if the user is allowed to delete this treatment plan
+    if ((req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Sie haben keine Berechtigung, diesen Behandlungsplan zu löschen.'
+        message: 'Zugriff verweigert. Sie können keinen Behandlungsplan löschen, den Sie nicht erstellt haben.'
       });
     }
     
@@ -318,16 +329,16 @@ const deleteTreatmentPlan = async (req, res) => {
 const addStep = async (req, res) => {
   try {
     const { planId } = req.params;
-    const { description } = req.body;
+    const { title, description, order } = req.body;
     
     // Validate input
-    if (!description) {
+    if (!title) {
       return res.status(400).json({ 
-        message: 'Beschreibung ist erforderlich'
+        message: 'Titel ist erforderlich'
       });
     }
     
-    // Find treatment plan by ID
+    // Find treatment plan
     const treatmentPlan = await TreatmentPlanModel.findById(planId);
     
     if (!treatmentPlan) {
@@ -339,16 +350,21 @@ const addStep = async (req, res) => {
     // Find the associated session
     const session = await SessionModel.findById(treatmentPlan.sessionId);
     
-    // Check if user has access to add steps to this treatment plan
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    // Check if user has permission to add steps
+    if (req.user.role === 'DOCTOR' && 
+        session.assignedToId !== req.user.id && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
+        message: 'Zugriff verweigert. Sie können keine Behandlungsschritte zu einem Plan hinzufügen, der nicht von Ihnen erstellt wurde.'
       });
     }
     
     // Add step to treatment plan
     const step = await TreatmentPlanModel.addStep(planId, {
+      title,
       description,
+      order,
       status: 'PENDING'
     });
     
@@ -383,30 +399,30 @@ const addStep = async (req, res) => {
 const updateStep = async (req, res) => {
   try {
     const { stepId } = req.params;
-    const { description, status, notes } = req.body;
+    const { title, description, order, completed } = req.body;
     
-    // Get step first to get the treatment plan ID
-    const step = await prisma.treatmentStep.findUnique({
-      where: { id: stepId },
-      include: { treatmentPlan: true }
-    });
+    // Find step by ID (this also gives us the plan ID)
+    const step = await TreatmentPlanModel.findStepById(stepId);
     
     if (!step) {
       return res.status(404).json({ 
-        message: 'Schritt nicht gefunden'
+        message: 'Behandlungsschritt nicht gefunden'
       });
     }
     
-    // Get the treatment plan
+    // Find treatment plan
     const treatmentPlan = await TreatmentPlanModel.findById(step.treatmentPlanId);
     
     // Find the associated session
     const session = await SessionModel.findById(treatmentPlan.sessionId);
     
-    // Check if user has access to update this step
-    if (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) {
+    // Check if user has permission to update steps
+    if (req.user.role === 'DOCTOR' && 
+        session.assignedToId !== req.user.id && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Session ist einem anderen Arzt zugewiesen.'
+        message: 'Zugriff verweigert. Sie können keine Behandlungsschritte bearbeiten, die nicht von Ihnen erstellt wurden.'
       });
     }
     
@@ -419,16 +435,13 @@ const updateStep = async (req, res) => {
     }
     
     // For now, allow all users to update status
-    if (status) {
-      updateData.status = status.toUpperCase();
-      if (status.toUpperCase() === 'COMPLETED') {
-        updateData.completedAt = new Date();
-      }
+    if (completed) {
+      updateData.completedAt = new Date();
     }
     
     // Both doctors and medics can add notes
-    if (notes !== undefined) {
-      updateData.notes = notes;
+    if (order !== undefined) {
+      updateData.order = order;
     }
     
     // Don't update if there's nothing to update
@@ -473,29 +486,27 @@ const deleteStep = async (req, res) => {
   try {
     const { stepId } = req.params;
     
-    // Get step first to get the treatment plan ID
-    const step = await prisma.treatmentStep.findUnique({
-      where: { id: stepId },
-      include: { treatmentPlan: true }
-    });
+    // Find step by ID (this also gives us the plan ID)
+    const step = await TreatmentPlanModel.findStepById(stepId);
     
     if (!step) {
       return res.status(404).json({ 
-        message: 'Schritt nicht gefunden'
+        message: 'Behandlungsschritt nicht gefunden'
       });
     }
     
-    // Get the treatment plan
+    // Find treatment plan
     const treatmentPlan = await TreatmentPlanModel.findById(step.treatmentPlanId);
     
     // Find the associated session
     const session = await SessionModel.findById(treatmentPlan.sessionId);
     
-    // Check if user has access to delete this step
-    if (req.user.role !== 'ADMIN' && 
-       (req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id)) {
+    // Check if user has permission to delete steps
+    if ((req.user.role === 'DOCTOR' && session.assignedToId !== req.user.id) && 
+        session.status !== 'COMPLETED' && 
+        session.status !== 'CANCELLED') {
       return res.status(403).json({ 
-        message: 'Zugriff verweigert. Sie haben keine Berechtigung, diesen Schritt zu löschen.'
+        message: 'Zugriff verweigert. Sie können keine Behandlungsschritte löschen, die nicht von Ihnen erstellt wurden.'
       });
     }
     
