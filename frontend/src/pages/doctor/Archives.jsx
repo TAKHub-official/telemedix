@@ -20,9 +20,10 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Visibility as VisibilityIcon,
   CheckCircle as CheckCircleIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { sessionsAPI } from '../../services/api';
@@ -35,6 +36,12 @@ const Archives = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Favorited sessions
+  const [favorites, setFavorites] = useState(() => {
+    const savedFavorites = localStorage.getItem('doctor_favorite_archived_sessions');
+    return savedFavorites ? JSON.parse(savedFavorites) : [];
+  });
   
   // Pagination state
   const [page, setPage] = useState(0);
@@ -142,6 +149,18 @@ const Archives = () => {
     loadArchivedSessions();
   };
 
+  // Handle toggling favorite status
+  const handleToggleFavorite = (id, e) => {
+    e.stopPropagation(); // Prevent row click
+    
+    const newFavorites = favorites.includes(id)
+      ? favorites.filter(favId => favId !== id)
+      : [...favorites, id];
+    
+    setFavorites(newFavorites);
+    localStorage.setItem('doctor_favorite_archived_sessions', JSON.stringify(newFavorites));
+  };
+
   // Get priority color
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -207,11 +226,20 @@ const Archives = () => {
     }
   };
 
-  // Get current slice of data for pagination
-  const currentSessions = filteredSessions.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  // Get current slice of data for pagination, with favorites at the top
+  const currentSessions = filteredSessions
+    .sort((a, b) => {
+      // Sort by favorites first
+      const aFavorite = favorites.includes(a.id);
+      const bFavorite = favorites.includes(b.id);
+      
+      if (aFavorite && !bFavorite) return -1;
+      if (!aFavorite && bFavorite) return 1;
+      
+      // Otherwise keep original order (by date)
+      return 0;
+    })
+    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Box>
@@ -264,13 +292,15 @@ const Archives = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Session</TableCell>
+                  <TableCell>Titel</TableCell>
+                  <TableCell>ID</TableCell>
                   <TableCell>Priorität</TableCell>
                   <TableCell>Behandelnder Arzt</TableCell>
+                  <TableCell>Medic</TableCell>
                   <TableCell>Erstellt am</TableCell>
                   <TableCell>Beendet am</TableCell>
                   <TableCell>Dauer</TableCell>
-                  <TableCell>Aktionen</TableCell>
+                  <TableCell align="right">Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -282,43 +312,49 @@ const Archives = () => {
                   </TableRow>
                 ) : (
                   currentSessions.map((session) => (
-                    <TableRow key={session.id}>
+                    <TableRow 
+                      key={session.id}
+                      hover
+                      onClick={() => handleViewSession(session.id)}
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <TableCell>{session.title}</TableCell>
+                      <TableCell>{session.patientCode}</TableCell>
                       <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {session.title || session.sessionCategory || 'Unbenannte Session'}
-                          </Typography>
-                          {session.patientCode && (
-                            <Typography variant="caption" color="text.secondary">
-                              ID: {session.patientCode}
-                            </Typography>
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getPriorityLabel(session.priority)}
-                          color={getPriorityColor(session.priority)}
-                          size="small"
+                        <Chip 
+                          label={getPriorityLabel(session.priority)} 
+                          color={getPriorityColor(session.priority)} 
+                          size="small" 
                         />
                       </TableCell>
                       <TableCell>
-                        {session.doctor?.firstName && session.doctor?.lastName 
-                          ? `${session.doctor.firstName} ${session.doctor.lastName}`
-                          : (session.assignedTo?.firstName && session.assignedTo?.lastName 
-                            ? `${session.assignedTo.firstName} ${session.assignedTo.lastName}`
-                            : 'Nicht zugewiesen')}
+                        {session.assignedTo ? 
+                          `${session.assignedTo.firstName} ${session.assignedTo.lastName}` : 
+                          '-'}
+                      </TableCell>
+                      <TableCell>
+                        {session.createdBy ? 
+                          `${session.createdBy.firstName} ${session.createdBy.lastName}` : 
+                          '-'}
                       </TableCell>
                       <TableCell>{formatDate(session.createdAt)}</TableCell>
-                      <TableCell>{formatDate(session.completedAt)}</TableCell>
-                      <TableCell>{calculateDuration(session.createdAt, session.completedAt)}</TableCell>
+                      <TableCell>{session.completedAt ? formatDate(session.completedAt) : '-'}</TableCell>
                       <TableCell>
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleViewSession(session.id)}
-                          title="Details anzeigen"
+                        {session.completedAt ? 
+                          calculateDuration(session.createdAt, session.completedAt) : 
+                          '-'}
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton 
+                          color="primary" 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click event
+                            handleToggleFavorite(session.id, e);
+                          }}
                         >
-                          <VisibilityIcon />
+                          {favorites.includes(session.id) ? 
+                            <StarIcon fontSize="small" color="warning" /> : 
+                            <StarBorderIcon fontSize="small" />}
                         </IconButton>
                       </TableCell>
                     </TableRow>

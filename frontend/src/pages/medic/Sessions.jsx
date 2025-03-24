@@ -36,6 +36,7 @@ const MedicSessions = () => {
     priority: '',
     search: ''
   });
+  
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -321,7 +322,7 @@ const MedicSessions = () => {
         <Alert severity="info" sx={{ my: 2 }}>
           {sessions.length === 0 
             ? 'Sie haben noch keine Sessions erstellt.' 
-            : 'Keine Sessions entsprechen den ausgewählten Filtern.'}
+            : 'Keine Sessions entsprechen den Filterkriterien.'}
         </Alert>
       ) : (
         <Box>

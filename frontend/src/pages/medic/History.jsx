@@ -19,9 +19,14 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TablePagination
+  TablePagination,
+  IconButton,
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { sessionService } from '../../services/sessionService';
 
 const MedicHistory = () => {
@@ -32,6 +37,19 @@ const MedicHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Favorited sessions
+  const [favorites, setFavorites] = useState(() => {
+    const savedFavorites = localStorage.getItem('medic_favorite_history_sessions');
+    return savedFavorites ? JSON.parse(savedFavorites) : [];
+  });
+  
+  // Notification state
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Fetch completed sessions created by the medic
   useEffect(() => {
@@ -86,8 +104,51 @@ const MedicHistory = () => {
     );
   });
 
+  // Handle toggling favorite status
+  const handleToggleFavorite = (id, e) => {
+    e.stopPropagation(); // Prevent row click
+    
+    const newFavorites = favorites.includes(id)
+      ? favorites.filter(favId => favId !== id)
+      : [...favorites, id];
+    
+    setFavorites(newFavorites);
+    localStorage.setItem('medic_favorite_history_sessions', JSON.stringify(newFavorites));
+    
+    // Show notification
+    setNotification({
+      open: true,
+      message: favorites.includes(id) 
+        ? 'Session aus Favoriten entfernt' 
+        : 'Session zu Favoriten hinzugefügt',
+      severity: 'success'
+    });
+  };
+  
+  // Handle closing notification
+  const handleCloseNotification = () => {
+    setNotification({
+      ...notification,
+      open: false
+    });
+  };
+
+  // Sort and paginate sessions - favorites at the top
+  const sortedSessions = [...filteredSessions].sort((a, b) => {
+    const aFavorite = favorites.includes(a.id);
+    const bFavorite = favorites.includes(b.id);
+    
+    if (aFavorite && !bFavorite) return -1;
+    if (!aFavorite && bFavorite) return 1;
+    
+    // If both have same favorite status, sort by completion date (newer first)
+    const aDate = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+    const bDate = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+    return bDate - aDate;
+  });
+  
   // Get current page of data
-  const paginatedSessions = filteredSessions.slice(
+  const paginatedSessions = sortedSessions.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
@@ -158,6 +219,7 @@ const MedicHistory = () => {
                   <TableCell>Erstellt am</TableCell>
                   <TableCell>Abgeschlossen am</TableCell>
                   <TableCell>Arzt</TableCell>
+                  <TableCell align="right">Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -184,6 +246,19 @@ const MedicHistory = () => {
                         ? `${session.assignedTo.firstName} ${session.assignedTo.lastName}`
                         : '-'}
                     </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title={favorites.includes(session.id) ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={(e) => handleToggleFavorite(session.id, e)}
+                        >
+                          {favorites.includes(session.id) ? 
+                            <StarIcon fontSize="small" color="warning" /> : 
+                            <StarBorderIcon fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -202,6 +277,22 @@ const MedicHistory = () => {
           />
         </Paper>
       )}
+
+      {/* Notification */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={5000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

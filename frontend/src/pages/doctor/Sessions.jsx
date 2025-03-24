@@ -29,11 +29,12 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Visibility as VisibilityIcon,
   CheckCircle as CheckCircleIcon,
   AccessTime as AccessTimeIcon,
   Error as ErrorIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { sessionsAPI } from '../../services/api';
@@ -56,6 +57,12 @@ const Sessions = () => {
     search: '',
     status: 'all',
     priority: 'all'
+  });
+  
+  // Favorited sessions
+  const [favorites, setFavorites] = useState(() => {
+    const savedFavorites = localStorage.getItem('doctor_favorite_sessions');
+    return savedFavorites ? JSON.parse(savedFavorites) : [];
   });
   
   // Notification state
@@ -218,11 +225,21 @@ const Sessions = () => {
   };
   
   const sortSessions = (data) => {
-    if (!orderBy) {
-      return data;
-    }
+    if (!data) return [];
     
-    return [...data].sort((a, b) => {
+    // First sort by favorite status
+    const sorted = [...data].sort((a, b) => {
+      const aFavorite = favorites.includes(a.id);
+      const bFavorite = favorites.includes(b.id);
+      
+      if (aFavorite && !bFavorite) return -1;
+      if (!aFavorite && bFavorite) return 1;
+      
+      // If both have same favorite status, use the regular sorting
+      if (!orderBy) {
+        return 0;
+      }
+      
       // Handling for nested properties (e.g., 'medic.name')
       if (orderBy.includes('.')) {
         const [parent, child] = orderBy.split('.');
@@ -271,6 +288,8 @@ const Sessions = () => {
         return (aValue > bValue) ? -1 : 1;
       }
     });
+    
+    return sorted;
   };
   
   const getPriorityColor = (priority) => {
@@ -334,6 +353,27 @@ const Sessions = () => {
     page * rowsPerPage + rowsPerPage
   );
 
+  // Handle toggling favorite status
+  const handleToggleFavorite = (id, e) => {
+    e.stopPropagation(); // Prevent row click
+    
+    const newFavorites = favorites.includes(id)
+      ? favorites.filter(favId => favId !== id)
+      : [...favorites, id];
+    
+    setFavorites(newFavorites);
+    localStorage.setItem('doctor_favorite_sessions', JSON.stringify(newFavorites));
+    
+    // Show notification
+    setNotification({
+      open: true,
+      message: favorites.includes(id) 
+        ? 'Session aus Favoriten entfernt' 
+        : 'Session zu Favoriten hinzugefügt',
+      severity: 'success'
+    });
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -383,9 +423,10 @@ const Sessions = () => {
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 label="Status"
               >
-                <MenuItem value="all">Alle Status</MenuItem>
+                <MenuItem value="all">Alle</MenuItem>
                 <MenuItem value="OPEN">Offen</MenuItem>
                 <MenuItem value="IN_PROGRESS">In Bearbeitung</MenuItem>
+                <MenuItem value="COMPLETED">Abgeschlossen</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -526,18 +567,17 @@ const Sessions = () => {
                             `${session.createdBy.firstName || ''} ${session.createdBy.lastName || ''}`.trim() || 'Nicht zugewiesen' 
                             : 'Nicht zugewiesen'}
                         </TableCell>
-                        <TableCell padding="none">
-                          <Box sx={{ display: 'flex' }}>
-                            <Tooltip title="Session anzeigen">
+                        <TableCell padding="none" align="right">
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <Tooltip title={favorites.includes(session.id) ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}>
                               <IconButton 
                                 size="small"
                                 color="primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewSession(session.id);
-                                }}
+                                onClick={(e) => handleToggleFavorite(session.id, e)}
                               >
-                                <VisibilityIcon fontSize="small" />
+                                {favorites.includes(session.id) ? 
+                                  <StarIcon fontSize="small" color="warning" /> : 
+                                  <StarBorderIcon fontSize="small" />}
                               </IconButton>
                             </Tooltip>
                             
