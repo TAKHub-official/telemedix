@@ -260,7 +260,10 @@ const resetUserPassword = async (req, res) => {
     const { id } = req.params;
     const { newPassword } = req.body;
     
+    console.log(`Admin attempting to reset password for user ID: ${id}`);
+    
     if (!newPassword) {
+      console.log('Password reset failed: New password is required');
       return res.status(400).json({ 
         message: 'Neues Passwort ist erforderlich'
       });
@@ -270,15 +273,20 @@ const resetUserPassword = async (req, res) => {
     const user = await UserModel.findById(id);
     
     if (!user) {
+      console.log(`Password reset failed: User ID ${id} not found`);
       return res.status(404).json({ 
         message: 'Benutzer nicht gefunden'
       });
     }
     
+    console.log(`Resetting password for user: ${user.email} (${user.role})`);
+    
     // Update password
     await UserModel.update(id, {
       password: newPassword
     });
+    
+    console.log(`Password reset successful for user: ${user.email}`);
     
     // TODO: Send password reset email to user
     

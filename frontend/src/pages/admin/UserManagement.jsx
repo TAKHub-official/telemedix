@@ -174,6 +174,16 @@ const UserManagement = () => {
   // Handle create user
   const handleCreateUser = async () => {
     try {
+      if (!formData.password || formData.password.trim() === '') {
+        showNotification('Bitte geben Sie ein Passwort ein', 'error');
+        return;
+      }
+
+      console.log('Creating user with data:', { 
+        ...formData, 
+        password: formData.password ? '********' : 'no password set'
+      });
+      
       await usersAPI.create(formData);
       await fetchUsers();
       handleCloseDialogs();

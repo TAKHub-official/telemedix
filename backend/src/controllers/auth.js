@@ -21,6 +21,7 @@ const login = async (req, res) => {
     // Find user by email
     const user = await UserModel.findByEmail(email);
     if (!user) {
+      console.log(`Login failed: User with email ${email} not found`);
       return res.status(401).json({ 
         message: 'Ungültige Anmeldedaten'
       });
@@ -28,6 +29,7 @@ const login = async (req, res) => {
     
     // Check if user is active
     if (user.status !== 'ACTIVE') {
+      console.log(`Login failed: User ${email} has status ${user.status}, expected ACTIVE`);
       return res.status(403).json({ 
         message: 'Benutzerkonto ist inaktiv oder gesperrt'
       });
@@ -35,6 +37,8 @@ const login = async (req, res) => {
     
     // Check password
     const isPasswordValid = await UserModel.comparePassword(password, user.password);
+    console.log(`Password validation for ${email}: ${isPasswordValid ? 'Success' : 'Failed'}`);
+    
     if (!isPasswordValid) {
       return res.status(401).json({ 
         message: 'Ungültige Anmeldedaten'
@@ -57,6 +61,8 @@ const login = async (req, res) => {
     
     // Return user data without sensitive information
     const { password: _, ...userWithoutPassword } = user;
+    
+    console.log(`Login successful for user: ${email}, role: ${user.role}`);
     
     res.status(200).json({
       message: 'Anmeldung erfolgreich',
@@ -110,6 +116,7 @@ const changePassword = async (req, res) => {
     
     // Validate input
     if (!currentPassword || !newPassword) {
+      console.log('Password change error: Missing current or new password');
       return res.status(400).json({ 
         message: 'Aktuelles und neues Passwort sind erforderlich'
       });
@@ -117,6 +124,7 @@ const changePassword = async (req, res) => {
     
     // User should be available from auth middleware
     if (!req.user) {
+      console.log('Password change error: No authenticated user');
       return res.status(401).json({ 
         message: 'Authentifizierung erforderlich'
       });
@@ -127,6 +135,8 @@ const changePassword = async (req, res) => {
     
     // Check current password
     const isPasswordValid = await UserModel.comparePassword(currentPassword, user.password);
+    console.log(`Current password validation for user ${user.email}: ${isPasswordValid ? 'Success' : 'Failed'}`);
+    
     if (!isPasswordValid) {
       return res.status(401).json({ 
         message: 'Aktuelles Passwort ist falsch'
@@ -135,6 +145,7 @@ const changePassword = async (req, res) => {
     
     // Update password
     await UserModel.update(user.id, { password: newPassword });
+    console.log(`Password successfully changed for user: ${user.email}`);
     
     // Log password change
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;

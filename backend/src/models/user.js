@@ -14,6 +14,7 @@ class UserModel {
   static async create(userData) {
     // Hash the password before storing
     const hashedPassword = await bcrypt.hash(userData.password, 10);
+    console.log(`Hashing password for new user ${userData.email}`);
     
     return prisma.user.create({
       data: {
@@ -54,6 +55,7 @@ class UserModel {
   static async update(id, userData) {
     // If password is being updated, hash it
     if (userData.password) {
+      console.log(`Hashing updated password for user ID: ${id}`);
       userData.password = await bcrypt.hash(userData.password, 10);
     }
     
@@ -116,7 +118,13 @@ class UserModel {
    * @returns {Promise<boolean>} True if passwords match
    */
   static async comparePassword(providedPassword, storedPassword) {
-    return bcrypt.compare(providedPassword, storedPassword);
+    try {
+      const result = await bcrypt.compare(providedPassword, storedPassword);
+      return result;
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      return false;
+    }
   }
 }
 

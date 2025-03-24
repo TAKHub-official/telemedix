@@ -5,20 +5,17 @@ import { API_BASE_URL } from '../constants/config';
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 console.log('API URL:', apiUrl);
 
-// Create axios instance with default config
+// Create axios instance with baseURL and common configurations
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Increase timeout for slow connections
-  timeout: 10000,
 });
 
-// Add interceptor to add auth token to requests
+// Request interceptor - Add authorization header if token exists
 api.interceptors.request.use(
   (config) => {
-    console.log(`Request to ${config.url}`);
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -26,45 +23,68 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add interceptor to handle auth errors
+// Response interceptor - Handle common response tasks
 api.interceptors.response.use(
   (response) => {
+    // Optional: Log successful responses
     console.log(`Response from ${response.config.url}:`, response.status);
     return response;
   },
   (error) => {
-    console.error('API Error:', error);
+    // Handle response errors
+    console.error('API Error Response:', error);
     
     if (error.response) {
+      // The request was made and the server responded with a non-2xx status
+      console.error('Response data:', error.response.data);
       console.error('Status:', error.response.status);
-      console.error('Data:', error.response.data);
       
-      // Handle 401 Unauthorized errors
+      // Handle authentication errors
       if (error.response.status === 401) {
-        console.log('Unauthorized error, clearing session');
-        // Clear local storage
+        // Token expired or invalid
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         
-        // Redirect to login page if not already there
-        if (window.location.pathname !== '/login') {
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }
       }
     } else if (error.request) {
+      // The request was made but no response was received
       console.error('No response received:', error.request);
     } else {
-      console.error('Error setting up request:', error.message);
+      // Something happened in setting up the request
+      console.error('Request setup error:', error.message);
     }
     
     return Promise.reject(error);
   }
 );
+
+// Helper to handle array parameters for filters
+const processParams = (params) => {
+  if (!params) return params;
+  
+  const modifiedParams = { ...params };
+  
+  // Handle status arrays for filtering
+  if (params && params.status && Array.isArray(params.status)) {
+    if (params.status.length === 0) {
+      delete modifiedParams.status;
+    } else {
+      // Convert status array to comma-separated string
+      modifiedParams.status = params.status.join(',');
+    }
+  }
+  
+  return modifiedParams;
+};
 
 // Auth API
 const authAPI = {
@@ -81,7 +101,10 @@ const authAPI = {
 const usersAPI = {
   getAll: (params) => api.get('/users', { params }),
   getById: (id) => api.get(`/users/${id}`),
-  create: (data) => api.post('/users', data),
+  create: (data) => {
+    console.log('Creating new user with data:', {...data, password: '[REDACTED]'});
+    return api.post('/users', data);
+  },
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   changeRole: (id, role) => api.put(`/users/${id}/role`, { role }),
@@ -93,7 +116,10 @@ const adminAPI = {
   getStats: () => api.get('/admin/stats'),
   getDetailedStats: () => api.get('/admin/stats/detailed'),
   getAuditLogs: (filters = {}) => api.get('/admin/logs', { params: filters }),
-  resetUserPassword: (id, newPassword) => api.post(`/admin/users/${id}/reset-password`, { newPassword }),
+  resetUserPassword: (id, newPassword) => {
+    console.log(`Resetting password for user ID: ${id}`);
+    return api.post(`/admin/users/${id}/reset-password`, { newPassword });
+  },
 };
 
 // Sessions API

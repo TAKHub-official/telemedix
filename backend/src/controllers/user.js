@@ -79,8 +79,11 @@ const createUser = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
     
+    console.log(`Attempting to create new user: ${email}, role: ${role}`);
+    
     // Validate input
     if (!email || !password || !firstName || !lastName || !role) {
+      console.log('Create user failed: Missing required fields');
       return res.status(400).json({ 
         message: 'Alle Felder sind erforderlich: E-Mail, Passwort, Vorname, Nachname, Rolle'
       });
@@ -89,6 +92,7 @@ const createUser = async (req, res) => {
     // Check if email is already in use
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
+      console.log(`Create user failed: Email ${email} already in use`);
       return res.status(409).json({ 
         message: 'E-Mail wird bereits verwendet'
       });
@@ -103,6 +107,8 @@ const createUser = async (req, res) => {
       role: role.toUpperCase(),
       status: 'ACTIVE'
     });
+    
+    console.log(`User created successfully: ${email}, ID: ${newUser.id}, Status: ${newUser.status}`);
     
     // Log user creation
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
