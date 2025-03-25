@@ -54,8 +54,6 @@ const NewSession = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [generatedSessionId, setGeneratedSessionId] = useState('');
-  const [showTemperature, setShowTemperature] = useState(false);
-  const [showBloodGlucose, setShowBloodGlucose] = useState(false);
   const [showPastMedicalHistory, setShowPastMedicalHistory] = useState(false);
   const [showAllergies, setShowAllergies] = useState(false);
   const [medicationText, setMedicationText] = useState(''); // New state for medications
@@ -100,13 +98,13 @@ const NewSession = () => {
     accidentTimeMinute: '', // New field for accident time minute
     
     // Vital signs - setze Standardwerte
-    heartRate: '60',  // Normalwert
-    systolicBP: '120',  // Normalwert
-    diastolicBP: '80',  // Normalwert
-    oxygenSaturation: '98',  // Normalwert
-    respiratoryRate: '14',  // Normalwert
-    temperature: '',  // Optional - kein Standardwert
-    bloodGlucose: '',  // Optional - kein Standardwert
+    heartRate: '',  // Standardwert: Nicht gemessen
+    systolicBP: '',  // Standardwert: Nicht gemessen
+    diastolicBP: '',  // Standardwert: Nicht gemessen
+    oxygenSaturation: '',  // Standardwert: Nicht gemessen
+    respiratoryRate: '',  // Standardwert: Nicht gemessen
+    temperature: '',  // Optional - Standardwert: Nicht gemessen
+    bloodGlucose: '',  // Optional - Standardwert: Nicht gemessen
     painLevel: '0',
     consciousness: 'ALERT',
     
@@ -125,6 +123,7 @@ const NewSession = () => {
     accessPvk: false, // Zugang: PVK
     accessIo: false,  // Zugang: IO
     accessZvk: false, // Zugang: ZVK
+    accessArterial: false, // Zugang: Arteriell
     
     perfusors: '',     // Perfusoren (text field)
     reanimation: '',   // Reanimation (text field)
@@ -151,6 +150,13 @@ const NewSession = () => {
     hemostasisTq: false,       // Blutstillung: TQ
     hemostasisDv: false,       // Blutstillung: Israeli
     hemostasisWp: false,       // Blutstillung: WP
+    perfusorCount: '1',
+    ventilationPeep: '',
+    ventilationFio2: '',
+    ventilationTidalVolume: '',
+    ventilationRespiratoryRate: '',
+    ventilationInspiratoryTime: '',
+    ventilationMode: '',
   });
   
   // Steps for the form
@@ -220,7 +226,8 @@ const NewSession = () => {
               access: [
                 formData.accessPvk ? 'PVK' : null,
                 formData.accessIo ? 'IO' : null,
-                formData.accessZvk ? 'ZVK' : null
+                formData.accessZvk ? 'ZVK' : null,
+                formData.accessArterial ? 'Arteriell' : null
               ].filter(Boolean).join(', ') || 'Kein Zugang',
               intubation: formData.intubationSga ? 'SGA' : formData.intubationTubus ? 'Endotr. Tubus' : formData.intubationKoniotomie ? 'Koniotomie' : 'Keine',
               // Bei Blutstillung alle gewählten Optionen anzeigen, kommagetrennt
@@ -256,52 +263,44 @@ const NewSession = () => {
         const sessionId = response.session.id;
         
         // Add vital signs one by one
-        if (formData.heartRate) {
-          await sessionService.addVitalSign(sessionId, {
-            type: 'HEART_RATE',
-            value: formData.heartRate,
-            unit: 'bpm'
-          });
-        }
+        await sessionService.addVitalSign(sessionId, {
+          type: 'HEART_RATE',
+          value: formData.heartRate || '',
+          unit: 'bpm'
+        });
         
-        if (formData.systolicBP && formData.diastolicBP) {
-          await sessionService.addVitalSign(sessionId, {
-            type: 'BLOOD_PRESSURE',
-            value: `${formData.systolicBP}/${formData.diastolicBP}`,
-            unit: 'mmHg'
-          });
-        }
+        await sessionService.addVitalSign(sessionId, {
+          type: 'BLOOD_PRESSURE',
+          value: formData.systolicBP && formData.diastolicBP ? `${formData.systolicBP}/${formData.diastolicBP}` : '',
+          unit: 'mmHg'
+        });
         
-        if (formData.oxygenSaturation) {
-          await sessionService.addVitalSign(sessionId, {
-            type: 'OXYGEN_SATURATION',
-            value: formData.oxygenSaturation,
-            unit: '%'
-          });
-        }
+        await sessionService.addVitalSign(sessionId, {
+          type: 'OXYGEN_SATURATION',
+          value: formData.oxygenSaturation || '',
+          unit: '%'
+        });
         
-        if (formData.respiratoryRate) {
-          await sessionService.addVitalSign(sessionId, {
-            type: 'RESPIRATORY_RATE',
-            value: formData.respiratoryRate,
-            unit: 'breaths/min'
-          });
-        }
+        await sessionService.addVitalSign(sessionId, {
+          type: 'RESPIRATORY_RATE',
+          value: formData.respiratoryRate || '',
+          unit: 'breaths/min'
+        });
         
         // Nur senden, wenn Temperatur hinzugefügt und ausgewählt wurde
-        if (showTemperature && formData.temperature) {
+        if (formData.temperature) {
           await sessionService.addVitalSign(sessionId, {
             type: 'TEMPERATURE',
-            value: formData.temperature,
+            value: formData.temperature || '',
             unit: '°C'
           });
         }
         
         // Nur senden, wenn Blutzucker hinzugefügt und ausgewählt wurde
-        if (showBloodGlucose && formData.bloodGlucose) {
+        if (formData.bloodGlucose) {
           await sessionService.addVitalSign(sessionId, {
             type: 'BLOOD_GLUCOSE',
-            value: formData.bloodGlucose,
+            value: formData.bloodGlucose || '',
             unit: 'mg/dL'
           });
         }
@@ -325,12 +324,13 @@ const NewSession = () => {
         let treatmentDescription = '';
         
         // Access
-        if (formData.accessPvk || formData.accessIo || formData.accessZvk) {
+        if (formData.accessPvk || formData.accessIo || formData.accessZvk || formData.accessArterial) {
           treatmentDescription += 'Zugang: ';
           const accessTypes = [];
           if (formData.accessPvk) accessTypes.push('PVK');
           if (formData.accessIo) accessTypes.push('IO');
           if (formData.accessZvk) accessTypes.push('ZVK');
+          if (formData.accessArterial) accessTypes.push('Arteriell');
           treatmentDescription += accessTypes.join(', ') + '. ';
         } else {
           treatmentDescription += 'Zugang: Kein. ';
@@ -1224,77 +1224,53 @@ const NewSession = () => {
               </Grid>
               
               <Grid item xs={12} sm={6} md={4}>
-                {!showTemperature ? (
-                  <Button 
-                    fullWidth 
-                    variant="outlined" 
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowTemperature(true)}
-                    sx={{ mt: 2, height: '56px' }}
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="temperature-label">Temperatur (°C)</InputLabel>
+                  <Select
+                    labelId="temperature-label"
+                    name="temperature"
+                    value={formData.temperature}
+                    onChange={handleChange}
+                    label="Temperatur (°C)"
                   >
-                    Temperatur hinzufügen
-                  </Button>
-                ) : (
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel id="temperature-label">Temperatur (°C)</InputLabel>
-                    <Select
-                      labelId="temperature-label"
-                      name="temperature"
-                      value={formData.temperature}
-                      onChange={handleChange}
-                      label="Temperatur (°C)"
-                    >
-                      {TEMPERATURE_OPTIONS.map(option => (
-                        <MenuItem 
-                          key={option.value} 
-                          value={option.value}
-                          sx={option.isNormal ? { fontWeight: 'bold' } : 
-                             option.isLow ? { color: 'error.main' } : 
-                             option.isHigh ? { color: 'warning.main' } : {}}
-                        >
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
+                    {TEMPERATURE_OPTIONS.map(option => (
+                      <MenuItem 
+                        key={option.value} 
+                        value={option.value}
+                        sx={option.isNormal ? { fontWeight: 'bold' } : 
+                           option.isLow ? { color: 'error.main' } : 
+                           option.isHigh ? { color: 'warning.main' } : {}}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               
               <Grid item xs={12} sm={6} md={4}>
-                {!showBloodGlucose ? (
-                  <Button 
-                    fullWidth 
-                    variant="outlined" 
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowBloodGlucose(true)}
-                    sx={{ mt: 2, height: '56px' }}
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="blood-glucose-label">Blutzucker (mg/dL)</InputLabel>
+                  <Select
+                    labelId="blood-glucose-label"
+                    name="bloodGlucose"
+                    value={formData.bloodGlucose}
+                    onChange={handleChange}
+                    label="Blutzucker (mg/dL)"
                   >
-                    Blutzucker hinzufügen
-                  </Button>
-                ) : (
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel id="blood-glucose-label">Blutzucker (mg/dL)</InputLabel>
-                    <Select
-                      labelId="blood-glucose-label"
-                      name="bloodGlucose"
-                      value={formData.bloodGlucose}
-                      onChange={handleChange}
-                      label="Blutzucker (mg/dL)"
-                    >
-                      {BLOOD_GLUCOSE_OPTIONS.map(option => (
-                        <MenuItem 
-                          key={option.value} 
-                          value={option.value}
-                          sx={option.isNormal ? { fontWeight: 'bold' } : 
-                             option.isLow ? { color: 'error.main' } : 
-                             option.isHigh ? { color: 'warning.main' } : {}}
-                        >
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
+                    {BLOOD_GLUCOSE_OPTIONS.map(option => (
+                      <MenuItem 
+                        key={option.value} 
+                        value={option.value}
+                        sx={option.isNormal ? { fontWeight: 'bold' } : 
+                           option.isLow ? { color: 'error.main' } : 
+                           option.isHigh ? { color: 'warning.main' } : {}}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               
               <Grid item xs={12} sm={6} md={4}>
@@ -1405,6 +1381,18 @@ const NewSession = () => {
                   >
                     ZVK
                   </Button>
+                  <Button 
+                    variant={formData.accessArterial ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        accessArterial: !prev.accessArterial
+                      }));
+                    }}
+                  >
+                    Arteriell
+                  </Button>
                 </Box>
               </Grid>
               
@@ -1415,21 +1403,43 @@ const NewSession = () => {
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={9}>
-                <TextField
-                  fullWidth
-                  name="perfusors"
-                  value={formData.perfusors}
-                  onChange={handleChange}
-                  placeholder="Perfusoren..."
-                  variant="outlined"
-                  size="small"
-                />
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <FormControl size="small" sx={{ width: 100 }}>
+                    <InputLabel id="perfusor-count-label">Anzahl</InputLabel>
+                    <Select
+                      labelId="perfusor-count-label"
+                      label="Anzahl"
+                      value={formData.perfusorCount || ''}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          perfusorCount: e.target.value
+                        }));
+                      }}
+                    >
+                      {[1, 2, 3, 4].map((num) => (
+                        <MenuItem key={num} value={num}>
+                          {num}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    fullWidth
+                    name="perfusors"
+                    value={formData.perfusors}
+                    onChange={handleChange}
+                    placeholder="Laufende Medikation auf Perfusoren..."
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
               </Grid>
               
-              {/* Laufende Medikation */}
+              {/* Laufende/vergangene Medikation */}
               <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="subtitle2">
-                  Laufende Medikation:
+                  Laufende/vergangene Medikation:
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={9}>
@@ -1737,7 +1747,7 @@ const NewSession = () => {
               {/* Beatmung */}
               <Grid item xs={12} sm={3} sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography variant="subtitle2">
-                  Beatmung:
+                  Atmung / Beatmung:
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={9}>
@@ -1769,6 +1779,136 @@ const NewSession = () => {
                     maschinell
                   </Button>
                 </Box>
+
+                {/* Maschinelle Beatmungseinstellungen */}
+                {formData.ventilationMechanical && (
+                  <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="peep-label">PEEP (mbar)</InputLabel>
+                      <Select
+                        labelId="peep-label"
+                        label="PEEP (mbar)"
+                        value={formData.ventilationPeep || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationPeep: e.target.value
+                          }));
+                        }}
+                      >
+                        {[0, 2, 4, 5, 6, 8, 10, 12, 15, 20].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="fio2-label">FiO₂ (%)</InputLabel>
+                      <Select
+                        labelId="fio2-label"
+                        label="FiO₂ (%)"
+                        value={formData.ventilationFio2 || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationFio2: e.target.value
+                          }));
+                        }}
+                      >
+                        {[21, 30, 40, 50, 60, 70, 80, 90, 100].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="tidal-volume-label">Tidalvolumen (ml)</InputLabel>
+                      <Select
+                        labelId="tidal-volume-label"
+                        label="Tidalvolumen (ml)"
+                        value={formData.ventilationTidalVolume || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationTidalVolume: e.target.value
+                          }));
+                        }}
+                      >
+                        {[300, 400, 500, 600, 700, 800, 900, 1000].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="respiratory-rate-label">Atemfrequenz (/min)</InputLabel>
+                      <Select
+                        labelId="respiratory-rate-label"
+                        label="Atemfrequenz (/min)"
+                        value={formData.ventilationRespiratoryRate || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationRespiratoryRate: e.target.value
+                          }));
+                        }}
+                      >
+                        {[8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="inspiratory-time-label">Inspirationszeit (s)</InputLabel>
+                      <Select
+                        labelId="inspiratory-time-label"
+                        label="Inspirationszeit (s)"
+                        value={formData.ventilationInspiratoryTime || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationInspiratoryTime: e.target.value
+                          }));
+                        }}
+                      >
+                        {[0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ width: 120 }}>
+                      <InputLabel id="ventilation-mode-label">Beatmungsmodus</InputLabel>
+                      <Select
+                        labelId="ventilation-mode-label"
+                        label="Beatmungsmodus"
+                        value={formData.ventilationMode || ''}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            ventilationMode: e.target.value
+                          }));
+                        }}
+                      >
+                        <MenuItem value="PCV">PCV</MenuItem>
+                        <MenuItem value="VCV">VCV</MenuItem>
+                        <MenuItem value="BiPAP">BiPAP</MenuItem>
+                        <MenuItem value="APRV">APRV</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                )}
               </Grid>
               
               {/* Thorax Drainage */}
@@ -2084,47 +2224,69 @@ const NewSession = () => {
                 Vitalwerte
               </Typography>
               <Grid container spacing={2}>
-                {formData.heartRate && (
+                {formData.heartRate ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       Herzfrequenz: {formData.heartRate} bpm
                     </Typography>
                   </Grid>
+                ) : (
+                  <Grid item xs={6} sm={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Herzfrequenz: Nicht gemessen
+                    </Typography>
+                  </Grid>
                 )}
                 
-                {formData.systolicBP && formData.diastolicBP && (
+                {formData.systolicBP && formData.diastolicBP ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       Blutdruck: {formData.systolicBP}/{formData.diastolicBP} mmHg
                     </Typography>
                   </Grid>
+                ) : (
+                  <Grid item xs={6} sm={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Blutdruck: Nicht gemessen
+                    </Typography>
+                  </Grid>
                 )}
                 
-                {formData.oxygenSaturation && (
+                {formData.oxygenSaturation ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       O₂-Sättigung: {formData.oxygenSaturation}%
                     </Typography>
                   </Grid>
+                ) : (
+                  <Grid item xs={6} sm={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      O₂-Sättigung: Nicht gemessen
+                    </Typography>
+                  </Grid>
                 )}
                 
-                {formData.respiratoryRate && (
+                {formData.respiratoryRate ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       Atemfrequenz: {formData.respiratoryRate} /min
                     </Typography>
                   </Grid>
+                ) : (
+                  <Grid item xs={6} sm={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Atemfrequenz: Nicht gemessen
+                    </Typography>
+                  </Grid>
                 )}
                 
-                {showTemperature && formData.temperature && (
+                {formData.temperature ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       Temperatur: {formData.temperature} °C
                     </Typography>
                   </Grid>
-                )}
-                
-                {!showTemperature && (
+                ) : (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2" color="text.secondary">
                       Temperatur: Nicht gemessen
@@ -2132,15 +2294,13 @@ const NewSession = () => {
                   </Grid>
                 )}
                 
-                {showBloodGlucose && formData.bloodGlucose && (
+                {formData.bloodGlucose ? (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2">
                       Blutzucker: {formData.bloodGlucose} mg/dL
                     </Typography>
                   </Grid>
-                )}
-                
-                {!showBloodGlucose && (
+                ) : (
                   <Grid item xs={6} sm={4}>
                     <Typography variant="body2" color="text.secondary">
                       Blutzucker: Nicht gemessen
@@ -2174,7 +2334,8 @@ const NewSession = () => {
                     <strong>Zugang:</strong> {formData.accessPvk ? 'PVK ' : ''}
                     {formData.accessIo ? 'IO ' : ''}
                     {formData.accessZvk ? 'ZVK ' : ''}
-                    {!formData.accessPvk && !formData.accessIo && !formData.accessZvk && 
+                    {formData.accessArterial ? 'Arteriell ' : ''}
+                    {!formData.accessPvk && !formData.accessIo && !formData.accessZvk && !formData.accessArterial && 
                       'Kein'}
                   </Typography>
                 </Grid>
@@ -2182,14 +2343,14 @@ const NewSession = () => {
                 {/* Perfusoren summary */}
                 <Grid item xs={12}>
                   <Typography variant="body2">
-                    <strong>Perfusoren:</strong> {formData.perfusors || 'Keine'}
+                    <strong>Perfusoren:</strong> {formData.perfusorCount ? `${formData.perfusorCount} Perfusor${formData.perfusorCount > 1 ? 'en' : ''}: ${formData.perfusors || 'keine Medikation angegeben'}` : 'Keine'}
                   </Typography>
                 </Grid>
                 
                 {/* Laufende Medikation summary */}
                 <Grid item xs={12}>
                   <Typography variant="body2">
-                    <strong>Laufende Medikation:</strong> {medicationText || 'Keine'}
+                    <strong>Laufende/vergangene Medikation:</strong> {medicationText || 'Keine'}
                   </Typography>
                 </Grid>
                 
@@ -2214,8 +2375,18 @@ const NewSession = () => {
                 {/* Beatmung summary */}
                 <Grid item xs={12}>
                   <Typography variant="body2">
-                    <strong>Beatmung:</strong> {formData.ventilationManual ? 'Manuell ' : ''}
-                    {formData.ventilationMechanical ? 'Maschinell ' : ''}
+                    <strong>Atmung / Beatmung:</strong> {formData.ventilationManual ? 'Manuell ' : ''}
+                    {formData.ventilationMechanical ? (
+                      <>
+                        Maschinell
+                        {formData.ventilationPeep && ` (PEEP: ${formData.ventilationPeep} mbar)`}
+                        {formData.ventilationFio2 && ` (FiO₂: ${formData.ventilationFio2}%)`}
+                        {formData.ventilationTidalVolume && ` (Tidalvolumen: ${formData.ventilationTidalVolume} ml)`}
+                        {formData.ventilationRespiratoryRate && ` (Atemfrequenz: ${formData.ventilationRespiratoryRate}/min)`}
+                        {formData.ventilationInspiratoryTime && ` (Inspirationszeit: ${formData.ventilationInspiratoryTime}s)`}
+                        {formData.ventilationMode && ` (Modus: ${formData.ventilationMode})`}
+                      </>
+                    ) : ''}
                     {!formData.ventilationManual && !formData.ventilationMechanical && 'Keine'}
                   </Typography>
                 </Grid>

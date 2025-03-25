@@ -58,22 +58,35 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
     
     ['HEART_RATE', 'OXYGEN_SATURATION', 'RESPIRATORY_RATE', 'TEMPERATURE', 'BLOOD_GLUCOSE', 'PAIN_LEVEL', 'CONSCIOUSNESS'].forEach(type => {
       const latestVital = getLatestVitalSignByType(vitalSigns, type);
-      if (latestVital) {
+      if (latestVital && latestVital.value) {
         newVitalValues[type] = {
           value: latestVital.value,
           unit: latestVital.unit
+        };
+      } else {
+        // Reset to "Nicht gemessen" if no value exists
+        newVitalValues[type] = {
+          value: '',
+          unit: newVitalValues[type].unit
         };
       }
     });
     
     // Special handling for blood pressure
     const latestBP = getLatestVitalSignByType(vitalSigns, 'BLOOD_PRESSURE');
-    if (latestBP) {
+    if (latestBP && latestBP.value) {
       const [systolic, diastolic] = latestBP.value.split('/');
       newVitalValues.BLOOD_PRESSURE = {
         systolic,
         diastolic,
         unit: latestBP.unit
+      };
+    } else {
+      // Reset to "Nicht gemessen" if no value exists
+      newVitalValues.BLOOD_PRESSURE = {
+        systolic: '',
+        diastolic: '',
+        unit: 'mmHg'
       };
     }
     
@@ -96,13 +109,34 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
     if (type === 'BLOOD_PRESSURE') {
       // Special handling for blood pressure
       const { name, value: newValue } = value;
-      setCurrentVitalValues(prev => ({
-        ...prev,
-        BLOOD_PRESSURE: {
-          ...prev.BLOOD_PRESSURE,
-          [name]: newValue
-        }
-      }));
+      
+      // Get the numeric value for comparison
+      const getNumericValue = (val) => {
+        if (!val || val === '') return 0;
+        if (val.startsWith('>')) return parseInt(val.substring(1));
+        if (val.startsWith('<')) return parseInt(val.substring(1));
+        return parseInt(val);
+      };
+      
+      // Check if the new combination would be valid
+      const currentSystolic = name === 'systolic' ? newValue : currentVitalValues.BLOOD_PRESSURE.systolic;
+      const currentDiastolic = name === 'diastolic' ? newValue : currentVitalValues.BLOOD_PRESSURE.diastolic;
+      
+      // Only update if the combination is valid or one value is being cleared
+      const systolicNum = getNumericValue(currentSystolic);
+      const diastolicNum = getNumericValue(currentDiastolic);
+      
+      if (newValue === '' || currentSystolic === '' || currentDiastolic === '' || 
+          (name === 'systolic' && systolicNum >= diastolicNum) || 
+          (name === 'diastolic' && systolicNum >= diastolicNum)) {
+        setCurrentVitalValues(prev => ({
+          ...prev,
+          BLOOD_PRESSURE: {
+            ...prev.BLOOD_PRESSURE,
+            [name]: newValue
+          }
+        }));
+      }
     } else {
       // Standard handling for other vital signs
       setCurrentVitalValues(prev => ({
@@ -140,36 +174,26 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
       // Standard vital signs (not blood pressure)
       ['HEART_RATE', 'OXYGEN_SATURATION', 'RESPIRATORY_RATE', 'TEMPERATURE', 'BLOOD_GLUCOSE', 'PAIN_LEVEL', 'CONSCIOUSNESS'].forEach(type => {
         const vitalData = currentVitalValues[type];
-        // Send all values that are set (even unchanged)
-        if (vitalData.value) {
-          updatePromises.push(
-            sessionService.addVitalSign(session.id, {
-              type,
-              value: vitalData.value,
-              unit: vitalData.unit
-            })
-          );
-        }
+        // Send all values, including empty ones (Nicht gemessen)
+        updatePromises.push(
+          sessionService.addVitalSign(session.id, {
+            type,
+            value: vitalData.value || '',
+            unit: vitalData.unit
+          })
+        );
       });
       
       // Special handling for blood pressure
       const bp = currentVitalValues.BLOOD_PRESSURE;
-      if (bp.systolic && bp.diastolic) {
-        updatePromises.push(
-          sessionService.addVitalSign(session.id, {
-            type: 'BLOOD_PRESSURE',
-            value: `${bp.systolic}/${bp.diastolic}`,
-            unit: bp.unit
-          })
-        );
-      }
-      
-      // If no values are set, show an error
-      if (updatePromises.length === 0) {
-        setUpdatingError('Bitte geben Sie mindestens einen Vitalwert ein.');
-        setUpdatingAllVitals(false);
-        return;
-      }
+      // Send blood pressure, including empty values (Nicht gemessen)
+      updatePromises.push(
+        sessionService.addVitalSign(session.id, {
+          type: 'BLOOD_PRESSURE',
+          value: bp.systolic && bp.diastolic ? `${bp.systolic}/${bp.diastolic}` : '',
+          unit: bp.unit
+        })
+      );
       
       // Execute all updates in parallel
       await Promise.all(updatePromises);
@@ -186,12 +210,12 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
       setShowEditVitals(false);
       
       // Notify parent component about the update
-      if (typeof onVitalSignsUpdated === 'function') {
+      if (onVitalSignsUpdated) {
         onVitalSignsUpdated();
       }
-    } catch (err) {
-      console.error('Error updating vital signs:', err);
-      setUpdatingError('Fehler beim Aktualisieren der Vitalwerte. Bitte versuchen Sie es später erneut.');
+    } catch (error) {
+      console.error('Error updating vital signs:', error);
+      setUpdatingError('Fehler beim Aktualisieren der Vitalwerte.');
     } finally {
       setUpdatingAllVitals(false);
     }
@@ -293,14 +317,23 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
             </Typography>
             
             {showEditVitals ? (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <FormControl fullWidth margin="dense" size="small">
-                  <InputLabel id="systolic-edit-label">Systolisch</InputLabel>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1,
+                '& .MuiFormControl-root': {
+                  flex: 1
+                },
+                '& .MuiInputBase-root': {
+                  height: '40px'  // Gleiche Höhe wie andere Dropdowns
+                }
+              }}>
+                <FormControl margin="dense" size="small">
+                  <Typography variant="caption" sx={{ mb: 0.5 }}>
+                    Systolisch
+                  </Typography>
                   <Select
-                    labelId="systolic-edit-label"
                     value={currentVitalValues.BLOOD_PRESSURE.systolic}
                     onChange={(e) => handleDirectVitalChange('BLOOD_PRESSURE', { name: 'systolic', value: e.target.value })}
-                    label="Systolisch"
                     displayEmpty
                   >
                     {SYSTOLIC_BP_OPTIONS.map(option => (
@@ -317,13 +350,13 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
                   </Select>
                 </FormControl>
                 
-                <FormControl fullWidth margin="dense" size="small">
-                  <InputLabel id="diastolic-edit-label">Diastolisch</InputLabel>
+                <FormControl margin="dense" size="small">
+                  <Typography variant="caption" sx={{ mb: 0.5 }}>
+                    Diastolisch
+                  </Typography>
                   <Select
-                    labelId="diastolic-edit-label"
                     value={currentVitalValues.BLOOD_PRESSURE.diastolic}
                     onChange={(e) => handleDirectVitalChange('BLOOD_PRESSURE', { name: 'diastolic', value: e.target.value })}
-                    label="Diastolisch"
                     displayEmpty
                   >
                     {DIASTOLIC_BP_OPTIONS.map(option => (
