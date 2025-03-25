@@ -221,6 +221,21 @@ const VitalSigns = ({ session, onVitalSignsUpdated }) => {
     }
   };
 
+  const getAvpuColor = (value) => {
+    switch (value) {
+      case 'A':
+        return '#1B5E20'; // Dunkelgrün
+      case 'V':
+        return '#4CAF50'; // Hellgrün
+      case 'P':
+        return '#FF9800'; // Orange
+      case 'U':
+        return '#D32F2F'; // Rot
+      default:
+        return 'transparent';
+    }
+  };
+
   if (!session) return null;
 
   return (

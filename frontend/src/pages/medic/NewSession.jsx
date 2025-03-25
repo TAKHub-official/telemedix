@@ -150,7 +150,7 @@ const NewSession = () => {
     hemostasisTq: false,       // Blutstillung: TQ
     hemostasisDv: false,       // Blutstillung: Israeli
     hemostasisWp: false,       // Blutstillung: WP
-    perfusorCount: '1',
+    perfusorCount: '0',
     ventilationPeep: '',
     ventilationFio2: '',
     ventilationTidalVolume: '',
@@ -218,7 +218,6 @@ const NewSession = () => {
             injuries: formData.injuries,
             incidentDescription: formData.incidentDescription,
             pastMedicalHistory: showPastMedicalHistory ? formData.pastMedicalHistory : '',
-            treatmentSoFar: formData.treatmentSoFar,
             treatment: {
               // Add detailed treatment fields here
               breathing: formData.ventilationManual ? 'Manuell' : formData.ventilationMechanical ? 'Maschinell' : 'Spontan',
@@ -236,7 +235,9 @@ const NewSession = () => {
                 formData.hemostasisDv ? 'Israeli' : null,
                 formData.hemostasisWp ? 'WP' : null
               ].filter(Boolean).join(', ') || 'Keine',
-              perfusors: formData.perfusors || 'Keine',
+              perfusors: formData.perfusorCount && formData.perfusorCount !== '0' 
+                ? `${formData.perfusorCount} Perfusor${formData.perfusorCount > 1 ? 'en' : ''}: ${formData.perfusors || 'keine Medikation angegeben'}`
+                : 'Keine',
               medicationText: medicationText || 'Keine',
               extendedMeasures: (
                 (formData.extendedNarcosis ? 'Narkose, ' : '') +
@@ -247,7 +248,8 @@ const NewSession = () => {
               ).replace(/,\s*$/, '') || 'Keine',
               reanimation: formData.reanimation || 'Keine',
               thoraxDrainage: (formData.thoraxDrainageRight ? 'Rechts, ' : '') + (formData.thoraxDrainageLeft ? 'Links' : '').replace(/,\s*$/, '') || 'Keine',
-              decompression: (formData.decompressionRight ? 'Rechts, ' : '') + (formData.decompressionLeft ? 'Links' : '').replace(/,\s*$/, '') || 'Keine'
+              decompression: (formData.decompressionRight ? 'Rechts, ' : '') + (formData.decompressionLeft ? 'Links' : '').replace(/,\s*$/, '') || 'Keine',
+              treatmentSoFar: formData.treatmentSoFar || ''
             }
           }),
           allergies: showAllergies ? formData.allergies : '',
@@ -337,8 +339,8 @@ const NewSession = () => {
         }
         
         // Perfusoren
-        if (formData.perfusors) {
-          treatmentDescription += `Perfusoren: ${formData.perfusors}. `;
+        if (formData.perfusorCount && formData.perfusorCount !== '0') {
+          treatmentDescription += `Perfusoren: ${formData.perfusorCount} Perfusor${formData.perfusorCount > 1 ? 'en' : ''}: ${formData.perfusors || 'keine Medikation angegeben'}. `;
         }
         else {
           treatmentDescription += 'Perfusoren: Keine. ';
@@ -440,7 +442,7 @@ const NewSession = () => {
         if (treatmentDescription) {
           await sessionService.addNote(sessionId, {
             title: 'Bisherige Behandlung',
-            content: treatmentDescription,
+            content: treatmentDescription + (formData.treatmentSoFar ? `Weitere Behandlungsmaßnahmen: ${formData.treatmentSoFar}. ` : ''),
             type: 'TREATMENT'
           });
         }

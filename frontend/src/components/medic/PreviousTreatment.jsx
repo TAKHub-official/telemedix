@@ -32,42 +32,63 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
       
       console.log("PreviousTreatment - Parsed medical record data:", parsedData);
       
-      // Schaue speziell nach den treatment-Daten
+      // If we have treatment data in patientHistory, use it directly
       if (parsedData?.treatment) {
         console.log("PreviousTreatment - Found treatment data in patientHistory:", parsedData.treatment);
-      } else {
-        console.log("PreviousTreatment - No treatment data found in patientHistory");
+        
+        // Ensure all treatment fields are properly extracted
+        const treatmentData = {
+          ...parsedData.treatment,
+          // Add ventilation fields if they exist at root level
+          ventilationPeep: parsedData.ventilationPeep || parsedData.treatment.ventilationPeep,
+          ventilationFio2: parsedData.ventilationFio2 || parsedData.treatment.ventilationFio2,
+          ventilationTidalVolume: parsedData.ventilationTidalVolume || parsedData.treatment.ventilationTidalVolume,
+          ventilationRespiratoryRate: parsedData.ventilationRespiratoryRate || parsedData.treatment.ventilationRespiratoryRate,
+          ventilationInspiratoryTime: parsedData.ventilationInspiratoryTime || parsedData.treatment.ventilationInspiratoryTime,
+          ventilationMode: parsedData.ventilationMode || parsedData.treatment.ventilationMode,
+          // Add perfusor fields if they exist at root level
+          perfusorCount: parsedData.perfusorCount || parsedData.treatment.perfusorCount,
+          perfusorMedication: parsedData.perfusorMedication || parsedData.treatment.perfusorMedication,
+          // Add extended measures if they exist at root level
+          extendedNarcosis: parsedData.extendedNarcosis || parsedData.treatment.extendedNarcosis,
+          extendedStiffneck: parsedData.extendedStiffneck || parsedData.treatment.extendedStiffneck,
+          extendedVacuumMattress: parsedData.extendedVacuumMattress || parsedData.treatment.extendedVacuumMattress,
+          extendedGastricTube: parsedData.extendedGastricTube || parsedData.treatment.extendedGastricTube,
+          extendedUrinaryCatheter: parsedData.extendedUrinaryCatheter || parsedData.treatment.extendedUrinaryCatheter
+        };
+        
+        parsedData.treatment = treatmentData;
+        return parsedData;
       }
       
-      if (!parsedData?.treatment) {
-        // Check if treatment data might be stored at the root level
-        console.log("PreviousTreatment - Checking for treatment fields at root level");
-        const potentialTreatmentFields = [
-          'breathing', 'access', 'intubation', 'hemostasis',
-          'perfusors', 'medicationText', 'extendedMeasures',
-          'reanimation', 'thoraxDrainage', 'decompression'
-        ];
-        
-        const treatmentFromRoot = {};
-        let hasTreatmentFields = false;
-        
-        potentialTreatmentFields.forEach(field => {
-          if (parsedData[field]) {
-            treatmentFromRoot[field] = parsedData[field];
-            hasTreatmentFields = true;
-          }
-        });
-        
-        if (hasTreatmentFields) {
-          console.log("PreviousTreatment - Found treatment fields at root level:", treatmentFromRoot);
-          parsedData.treatment = treatmentFromRoot;
+      // If no treatment data found, create a treatment object from available fields
+      const treatmentData = {};
+      
+      // Check for treatment fields at root level
+      const treatmentFields = [
+        'breathing', 'access', 'intubation', 'hemostasis',
+        'perfusors', 'medicationText', 'extendedMeasures',
+        'reanimation', 'thoraxDrainage', 'decompression',
+        'treatmentSoFar',
+        // Add ventilation fields
+        'ventilationPeep', 'ventilationFio2', 'ventilationTidalVolume',
+        'ventilationRespiratoryRate', 'ventilationInspiratoryTime', 'ventilationMode',
+        // Add extended measures fields
+        'extendedNarcosis', 'extendedStiffneck', 'extendedVacuumMattress',
+        'extendedGastricTube', 'extendedUrinaryCatheter',
+        // Add perfusor fields
+        'perfusorCount', 'perfusorMedication'
+      ];
+      
+      treatmentFields.forEach(field => {
+        if (parsedData[field]) {
+          treatmentData[field] = parsedData[field];
         }
-      }
+      });
       
-      // If we're still missing treatment data, check if it's in another format
-      if (!parsedData?.treatment && medicalRecord.treatment) {
-        console.log("PreviousTreatment - Found treatment at medicalRecord.treatment");
-        parsedData.treatment = medicalRecord.treatment;
+      if (Object.keys(treatmentData).length > 0) {
+        console.log("PreviousTreatment - Created treatment data from root fields:", treatmentData);
+        parsedData.treatment = treatmentData;
       }
       
       return parsedData;
@@ -95,16 +116,17 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
   // Manual treatment fields based on anamnesis form
   // These fields correspond to Step 4 (Behandlung bisher) in the anamnesis form
   const treatmentFields = [
-    { key: 'breathing', label: 'Beatmung' },
+    { key: 'breathing', label: 'Atmung / Beatmung' },
     { key: 'access', label: 'Zugang' },
     { key: 'intubation', label: 'Intubation' },
-    { key: 'hemostasis', label: 'Blutstillung' },
     { key: 'perfusors', label: 'Perfusoren' },
-    { key: 'medicationText', label: 'Laufende Medikation' },
-    { key: 'extendedMeasures', label: 'Erweiterte Maßnahmen' },
+    { key: 'medicationText', label: 'Laufende/vergangene Medikation' },
     { key: 'reanimation', label: 'Reanimation' },
-    { key: 'thoraxDrainage', label: 'Thoraxdrainage' },
-    { key: 'decompression', label: 'Dekompression' }
+    { key: 'thoraxDrainage', label: 'Thorax Drainage' },
+    { key: 'decompression', label: 'Dekompression' },
+    { key: 'extendedMeasures', label: 'Erweiterte Maßnahmen' },
+    { key: 'bloodStopping', label: 'Blutstillung' },
+    { key: 'treatmentSoFar', label: 'Weitere Behandlungsmaßnahmen' }
   ];
   
   // Liste der zu ignorierenden Felder, die nicht angezeigt werden sollen
@@ -148,7 +170,7 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
     // Prüfen auf verschiedene Felder
     const fieldPatterns = [
       { pattern: /Zugang: ([^.]+)\./, key: 'access' },
-      { pattern: /Perfusoren: ([^.]+)\./, key: 'perfusors' },
+      { pattern: /Perfusoren: (\d+)(?: Perfusor(?:en)?: ([^.]+))?\./, key: 'perfusors' },
       { pattern: /Laufende Medikation: ([^.]+)\./, key: 'medicationText' },
       { pattern: /Reanimation: ([^.]+)\./, key: 'reanimation' },
       { pattern: /Intubation: ([^.]+)\./, key: 'intubation' },
@@ -156,13 +178,54 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
       { pattern: /Thorax Drainage: ([^.]+)\./, key: 'thoraxDrainage' },
       { pattern: /Dekompression: ([^.]+)\./, key: 'decompression' },
       { pattern: /Erweiterte Maßnahmen: ([^.]+)\./, key: 'extendedMeasures' },
-      { pattern: /Blutstillung: ([^.]+)\./, key: 'hemostasis' }
+      { pattern: /Blutstillung: ([^.]+)\./, key: 'bloodStopping' },
+      { pattern: /Weitere Behandlungsmaßnahmen: ([^.]+)\./, key: 'treatmentSoFar' },
+      { pattern: /PEEP: (\d+) mbar/, key: 'ventilationPeep' },
+      { pattern: /FiO₂: (\d+)%/, key: 'ventilationFio2' },
+      { pattern: /Tidalvolumen: (\d+) ml/, key: 'ventilationTidalVolume' },
+      { pattern: /Atemfrequenz: (\d+)\/min/, key: 'ventilationRespiratoryRate' },
+      { pattern: /Inspirationszeit: (\d+)s/, key: 'ventilationInspiratoryTime' },
+      { pattern: /Modus: ([^.]+)\./, key: 'ventilationMode' }
     ];
     
     fieldPatterns.forEach(({ pattern, key }) => {
       const match = noteContent.match(pattern);
-      if (match && match[1] && match[1].toLowerCase() !== 'keine') {
-        extractedTreatment[key] = match[1].trim();
+      if (match) {
+        if (key === 'perfusors') {
+          const count = match[1];
+          const medication = match[2];
+          if (count && count !== '0') {
+            extractedTreatment.perfusorCount = count;
+            if (medication) {
+              extractedTreatment.perfusorMedication = medication;
+            }
+          }
+        } else if (key === 'extendedMeasures') {
+          const measures = match[1].split(',').map(m => m.trim());
+          measures.forEach(measure => {
+            switch(measure) {
+              case 'Narkose':
+                extractedTreatment.extendedNarcosis = true;
+                break;
+              case 'Stiffneck':
+                extractedTreatment.extendedStiffneck = true;
+                break;
+              case 'Vakuum-Matratze':
+                extractedTreatment.extendedVacuumMattress = true;
+                break;
+              case 'Magensonde':
+                extractedTreatment.extendedGastricTube = true;
+                break;
+              case 'Urinkatheter':
+                extractedTreatment.extendedUrinaryCatheter = true;
+                break;
+            }
+          });
+        } else if (key.startsWith('ventilation')) {
+          extractedTreatment[key] = match[1];
+        } else if (match[1]) {
+          extractedTreatment[key] = match[1].trim();
+        }
       }
     });
     
@@ -187,7 +250,32 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
       if (colonIndex > 0) {
         const key = section.substring(0, colonIndex).trim();
         const value = section.substring(colonIndex + 1).trim();
-        parsedTreatmentNotes[key] = value;
+        
+        // Special handling for extended measures
+        if (key === 'Erweiterte Maßnahmen') {
+          const measures = value.split(',').map(m => m.trim());
+          measures.forEach(measure => {
+            switch(measure) {
+              case 'Narkose':
+                extractedTreatment.extendedNarcosis = true;
+                break;
+              case 'Stiffneck':
+                extractedTreatment.extendedStiffneck = true;
+                break;
+              case 'Vakuum-Matratze':
+                extractedTreatment.extendedVacuumMattress = true;
+                break;
+              case 'Magensonde':
+                extractedTreatment.extendedGastricTube = true;
+                break;
+              case 'Urinkatheter':
+                extractedTreatment.extendedUrinaryCatheter = true;
+                break;
+            }
+          });
+        } else {
+          parsedTreatmentNotes[key] = value;
+        }
       } else {
         // For sections without a colon, add them as additional notes
         if (!parsedTreatmentNotes['Weitere Angaben']) {
@@ -206,7 +294,32 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
         if (colonIndex > 0) {
           const key = lastSection.substring(0, colonIndex).trim();
           const value = lastSection.substring(colonIndex + 1).trim();
-          parsedTreatmentNotes[key] = value;
+          
+          // Special handling for extended measures
+          if (key === 'Erweiterte Maßnahmen') {
+            const measures = value.split(',').map(m => m.trim());
+            measures.forEach(measure => {
+              switch(measure) {
+                case 'Narkose':
+                  extractedTreatment.extendedNarcosis = true;
+                  break;
+                case 'Stiffneck':
+                  extractedTreatment.extendedStiffneck = true;
+                  break;
+                case 'Vakuum-Matratze':
+                  extractedTreatment.extendedVacuumMattress = true;
+                  break;
+                case 'Magensonde':
+                  extractedTreatment.extendedGastricTube = true;
+                  break;
+                case 'Urinkatheter':
+                  extractedTreatment.extendedUrinaryCatheter = true;
+                  break;
+              }
+            });
+          } else {
+            parsedTreatmentNotes[key] = value;
+          }
         } else {
           if (!parsedTreatmentNotes['Weitere Angaben']) {
             parsedTreatmentNotes['Weitere Angaben'] = lastSection;
@@ -247,72 +360,121 @@ const PreviousTreatment = ({ medicalRecord, notes }) => {
     Object.entries(parsedTreatmentNotes).forEach(([key, value]) => {
       // Entferne ":" aus dem Schlüsselnamen, falls vorhanden
       const cleanKey = key.replace(':', '').trim();
-      treatmentData[cleanKey] = value;
+      // Spezielle Behandlung für Beatmungswerte
+      if (cleanKey === 'PEEP') treatmentData.ventilationPeep = value;
+      else if (cleanKey === 'FiO₂') treatmentData.ventilationFio2 = value;
+      else if (cleanKey === 'Tidalvolumen') treatmentData.ventilationTidalVolume = value;
+      else if (cleanKey === 'Atemfrequenz') treatmentData.ventilationRespiratoryRate = value;
+      else if (cleanKey === 'Inspirationszeit') treatmentData.ventilationInspiratoryTime = value;
+      else if (cleanKey === 'Modus') treatmentData.ventilationMode = value;
+      else treatmentData[cleanKey] = value;
     });
   }
 
+  // Render treatment fields
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           Behandlung bisher
         </Typography>
-        
-        {/* Medical Record Treatment Data */}
-        {treatmentData && (
-          <>
-            <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 2 }}>
-              <Grid container spacing={2}>
-                {/* Direkte Behandlungsdaten aus dem treatment-Objekt */}
-                {treatmentFields.map((field) => 
-                  treatmentData[field.key] ? (
-                    <Grid item xs={12} sm={6} key={field.key}>
-                      <Typography variant="body1">
-                        <strong>{field.label}:</strong> {treatmentData[field.key]}
-                      </Typography>
-                    </Grid>
-                  ) : null
-                )}
-                
-                {/* Für den Fall, dass wir unbekannte Felder haben, zeigen wir diese auch an */}
-                {Object.entries(treatmentData)
-                  .filter(([key]) => !treatmentFields.some(field => field.key === key) && !ignoredFields.includes(key))
-                  .map(([key, value]) => (
-                    <Grid item xs={12} sm={6} key={key}>
-                      <Typography variant="body1">
-                        <strong>{key}:</strong> {value}
-                      </Typography>
-                    </Grid>
-                  ))
-                }
+        <Grid container spacing={2}>
+          {treatmentFields.map(({ key, label }) => {
+            const value = treatmentData?.[key];
+            
+            // Special handling for breathing/ventilation
+            if (key === 'breathing') {
+              const breathingValue = value;
+              if (!breathingValue) return null;
+              
+              return (
+                <Grid item xs={12} key={key}>
+                  <Typography variant="body2">
+                    <strong>{label}:</strong> {breathingValue}
+                    {breathingValue === 'Maschinell' && (
+                      <>
+                        {treatmentData.ventilationPeep && ` (PEEP: ${treatmentData.ventilationPeep} mbar)`}
+                        {treatmentData.ventilationFio2 && ` (FiO₂: ${treatmentData.ventilationFio2}%)`}
+                        {treatmentData.ventilationTidalVolume && ` (Tidalvolumen: ${treatmentData.ventilationTidalVolume} ml)`}
+                        {treatmentData.ventilationRespiratoryRate && ` (Atemfrequenz: ${treatmentData.ventilationRespiratoryRate}/min)`}
+                        {treatmentData.ventilationInspiratoryTime && ` (Inspirationszeit: ${treatmentData.ventilationInspiratoryTime}s)`}
+                        {treatmentData.ventilationMode && ` (Modus: ${treatmentData.ventilationMode})`}
+                      </>
+                    )}
+                  </Typography>
+                </Grid>
+              );
+            }
+            
+            // Special handling for perfusors
+            if (key === 'perfusors') {
+              const perfusorCount = treatmentData.perfusorCount;
+              const perfusorMedication = treatmentData.perfusorMedication || value;
+              
+              if (!perfusorCount || perfusorCount === '0') {
+                return null;
+              }
+              
+              return (
+                <Grid item xs={12} key={key}>
+                  <Typography variant="body2">
+                    <strong>{label}:</strong> {perfusorCount} Perfusor{perfusorCount > 1 ? 'en' : ''}: {perfusorMedication || 'keine Medikation angegeben'}
+                  </Typography>
+                </Grid>
+              );
+            }
+            
+            // Special handling for extended measures
+            if (key === 'extendedMeasures') {
+              const measures = [];
+              if (treatmentData.extendedNarcosis) measures.push('Narkose');
+              if (treatmentData.extendedStiffneck) measures.push('Stiffneck');
+              if (treatmentData.extendedVacuumMattress) measures.push('Vakuum-Matratze');
+              if (treatmentData.extendedGastricTube) measures.push('Magensonde');
+              if (treatmentData.extendedUrinaryCatheter) measures.push('Urinkatheter');
+              
+              if (measures.length === 0) {
+                return null;
+              }
+              
+              return (
+                <Grid item xs={12} key={key}>
+                  <Typography variant="body2">
+                    <strong>{label}:</strong> {measures.join(', ')}
+                  </Typography>
+                </Grid>
+              );
+            }
+            
+            // Special handling for treatmentSoFar
+            if (key === 'treatmentSoFar') {
+              if (!value) {
+                return null;
+              }
+              
+              return (
+                <Grid item xs={12} key={key}>
+                  <Typography variant="body2">
+                    <strong>{label}:</strong> {value}
+                  </Typography>
+                </Grid>
+              );
+            }
+            
+            // Default rendering for other fields
+            if (!value) {
+              return null;
+            }
+            
+            return (
+              <Grid item xs={12} key={key}>
+                <Typography variant="body2">
+                  <strong>{label}:</strong> {value}
+                </Typography>
               </Grid>
-            </Box>
-          </>
-        )}
-        
-        {/* Display a divider if both types of data are present */}
-        {treatmentData && hasTreatmentNotes && Object.keys(parsedTreatmentNotes).length > 0 && (
-          <Divider sx={{ my: 2 }} />
-        )}
-        
-        {/* Treatment Notes (wenn sie sich von den treatment-Daten unterscheiden) */}
-        {hasTreatmentNotes && Object.keys(parsedTreatmentNotes).length > 0 && (
-          <>
-            <Typography variant="subtitle1" gutterBottom fontWeight="medium">
-              Klinische Behandlung
-            </Typography>
-            <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-              <Grid container spacing={2}>
-                {Object.entries(parsedTreatmentNotes).map(([key, value], index) => (
-                  <Grid item xs={12} key={index}>
-                    <Typography variant="subtitle2" color="text.secondary" fontWeight="bold">{key}</Typography>
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{value}</Typography>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          </>
-        )}
+            );
+          })}
+        </Grid>
       </CardContent>
     </Card>
   );

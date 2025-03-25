@@ -399,13 +399,13 @@ const DoctorSessionDetail = () => {
                               const getColor = (value) => {
                                 switch(value) {
                                   case 'A': 
-                                  case 'ALERT': return '#4caf50'; // Grün für Alert
+                                  case 'ALERT': return '#1B5E20'; // Dunkelgrün für Alert
                                   case 'V': 
-                                  case 'VERBAL': return '#2196f3'; // Blau für Verbal
+                                  case 'VERBAL': return '#4CAF50'; // Hellgrün für Verbal
                                   case 'P': 
-                                  case 'PAIN': return '#ff9800'; // Orange für Pain
+                                  case 'PAIN': return '#FF9800'; // Orange für Pain
                                   case 'U': 
-                                  case 'UNRESPONSIVE': return '#f44336'; // Rot für Unresponsive
+                                  case 'UNRESPONSIVE': return '#D32F2F'; // Rot für Unresponsive
                                   default: return '#9e9e9e'; // Grau für unbekannt
                                 }
                               };
